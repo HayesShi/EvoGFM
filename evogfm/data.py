@@ -4,6 +4,7 @@ from pathlib import Path
 import concurrent.futures
 import json
 import pickle
+import os
 import urllib.request
 import numpy as np
 import scipy.sparse as sp
@@ -219,7 +220,7 @@ def download(url, destination):
     destination.parent.mkdir(parents=True, exist_ok=True)
     if destination.exists():
         return destination
-    temporary = destination.with_suffix(destination.suffix + ".download")
+    temporary = destination.with_name(f"{destination.name}.{os.getpid()}.download")
     with urllib.request.urlopen(url, timeout=90) as response:
         total = int(response.headers.get("Content-Length", 0)) or None
         with (
@@ -302,10 +303,18 @@ def load_graph(name, data_root="data"):
                     torch.from_numpy(np.stack(a.nonzero())), x.shape[0]
                 ),
             )
-    elif name == "roman-empire":
+    elif name in [
+        "roman-empire",
+        "amazon-ratings",
+        "minesweeper",
+        "tolokers",
+        "questions",
+    ]:
+        filename = name.replace("-", "_") + ".npz"
         path = download(
-            "https://raw.githubusercontent.com/yandex-research/heterophilous-graphs/main/data/roman_empire.npz",
-            raw / name / "roman_empire.npz",
+            "https://raw.githubusercontent.com/yandex-research/heterophilous-graphs/main/data/"
+            + filename,
+            raw / name / filename,
         )
         with np.load(path) as source:
             graph = dict(

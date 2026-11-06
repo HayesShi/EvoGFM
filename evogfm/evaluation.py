@@ -7,12 +7,25 @@ import torch.nn.functional as F
 from sklearn.metrics import roc_auc_score
 from tqdm import tqdm
 from .data import load_graph, load_protocol, seed_all, save_json
-from .features import preprocess, contexts, task_features, pair_channels
-from .readout import ridge, hits100, sampled_negatives, fit_residual, predict_residual
+from .features import (
+    preprocess,
+    contexts,
+    task_features,
+    pair_channels,
+    node_representations,
+)
+from .readout import (
+    ridge,
+    hits100,
+    sampled_negatives,
+    fit_residual,
+    predict_residual,
+    multiscale_ridge,
+)
 from .training import load_checkpoint
 
 
-def fit_link_readout(model, head, raw, x, full):
+def masked_link_examples(model, head, raw, x, full, observation_rate=0.7):
     """Fit 18 coefficients using masked training edges, never public queries."""
     n = len(raw)
     generator = torch.Generator().manual_seed(42)
@@ -49,7 +62,7 @@ def fit_link_readout(model, head, raw, x, full):
             train_y = torch.cat((torch.ones(pos.shape[1]), torch.zeros(neg.shape[1])))
             held_y = torch.cat((torch.ones(nheld), torch.zeros(nheld)))
             y = torch.cat((train_y, held_y))
-            state = model.state(x, support, 0.7 * 0.8)
+            state = model.state(x, support, observation_rate * 0.8)
             ctx = contexts(support, n, pairs)
             base = pair_channels(raw, support, pairs)
             f, _ = task_features(model, state, raw, support, pairs, ctx, base)
@@ -66,26 +79,39 @@ def fit_link_readout(model, head, raw, x, full):
             raise RuntimeError("calibration pair IDs overlap across augmented views")
         tf, to, ty = [torch.cat([row[i] for row in train]) for i in range(3)]
         hf, ho, hy = [torch.cat([row[i] for row in held]) for i in range(3)]
-        candidates = []
-        optimizer_begin = time.perf_counter()
-        for strength in [0.1, 1.0, 10.0, 100.0]:
-            fitted = fit_residual(tf, to, ty, strength)
-            loss = float(
-                F.binary_cross_entropy_with_logits(
-                    predict_residual(hf, ho, fitted), hy.double()
-                )
+    return (
+        (tf, to, ty),
+        (hf, ho, hy),
+        dict(
+            train_pairs=len(ty),
+            unique_train_pairs=len(train_ids),
+            unique_holdout_pairs=len(held_ids),
+        ),
+    )
+
+
+def fit_link_readout(model, head, raw, x, full, observation_rate=0.7):
+    """Fit 18 coefficients using masked training edges, never public queries."""
+    (tf, to, ty), (hf, ho, hy), statistics = masked_link_examples(
+        model, head, raw, x, full, observation_rate
+    )
+    candidates = []
+    begin = time.perf_counter()
+    for strength in [0.1, 1.0, 10.0, 100.0]:
+        fitted = fit_residual(tf, to, ty, strength)
+        loss = float(
+            F.binary_cross_entropy_with_logits(
+                predict_residual(hf, ho, fitted), hy.double()
             )
-            candidates.append((loss, strength, fitted))
-        loss, strength, fitted = min(candidates, key=lambda row: row[0])
-        optimizer_seconds = time.perf_counter() - optimizer_begin
+        )
+        candidates.append((loss, strength, fitted))
+    loss, strength, fitted = min(candidates, key=lambda row: row[0])
     return dict(
         fitted=fitted,
         selected_ridge=strength,
         calibration_holdout_bce=loss,
-        optimizer_seconds=optimizer_seconds,
-        train_pairs=len(ty),
-        unique_train_pairs=len(train_ids),
-        unique_holdout_pairs=len(held_ids),
+        optimizer_seconds=time.perf_counter() - begin,
+        **statistics,
     )
 
 
@@ -98,6 +124,8 @@ def evaluate(
     nc=("cora", "roman-empire"),
     lp=("cora", "citeseer"),
     threads=4,
+    node_readout="current",
+    nc_metric="accuracy",
 ):
     seed_all(42)
     torch.set_num_threads(threads)
@@ -113,27 +141,44 @@ def evaluate(
         raw, x = preprocess(graph)
         edges = graph["edges"]
         protocol = load_protocol(name, "nc", data_root)
-        dummy = edges[:, :1]
         with torch.no_grad():
             state = model.state(x, edges)
-            _, parts = task_features(
-                model,
-                state,
-                raw,
-                edges,
-                dummy,
-                contexts(edges, len(raw), dummy),
-                pair_channels(raw, edges, dummy),
+            metric = (
+                "auc"
+                if nc_metric == "auto" and len(graph["y"].unique()) == 2
+                else ("accuracy" if nc_metric == "auto" else nc_metric)
             )
-            scores, info = ridge(
-                torch.cat(parts, dim=1), graph["y"], protocol["train"], protocol["val"]
+            parts, values = node_representations(
+                model, state, raw, edges, hops=4 if node_readout == "adaptive" else 2
             )
+            if node_readout == "adaptive":
+                scores, info = multiscale_ridge(
+                    parts,
+                    values,
+                    graph["y"],
+                    protocol["train"],
+                    protocol["val"],
+                    metric=metric,
+                )
+            else:
+                scores, info = ridge(
+                    torch.cat(parts + [values], dim=1),
+                    graph["y"],
+                    protocol["train"],
+                    protocol["val"],
+                    metric=metric,
+                )
         classes = graph["y"][protocol["train"]].unique(sorted=True)
         ids = protocol[split]
         value = 100 * float(
             (classes[scores[ids].argmax(1)] == graph["y"][ids]).float().mean()
         )
         row = dict(dataset=name, task="nc", split=split, accuracy_percent=value, **info)
+        if len(classes) == 2:
+            row["auc_percent"] = 100 * float(
+                roc_auc_score(graph["y"][ids], scores[ids, 1] - scores[ids, 0])
+            )
+        row["selection_metric"] = metric
         rows.append(row)
         print(row, flush=True)
     for name in tqdm(lp, desc="link prediction"):

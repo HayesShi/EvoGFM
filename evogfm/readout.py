@@ -2,15 +2,20 @@
 
 import torch
 import torch.nn.functional as F
+from sklearn.metrics import roc_auc_score
 
 
-def ridge(h, y, train, val, alphas=(0.01, 0.1, 1.0, 10.0, 100.0)):
+def ridge(h, y, train, val, alphas=(0.01, 0.1, 1.0, 10.0, 100.0), metric="accuracy"):
     """Read only train/validation labels. Return fitted scores, not test metrics."""
     h = h.double()
     mu = h[train].mean(0)
     centered = h - mu
     a = centered[train]
     classes = y[train].unique(sorted=True)
+    if metric not in ("accuracy", "auc"):
+        raise ValueError("metric must be accuracy or auc")
+    if metric == "auc" and len(classes) != 2:
+        raise ValueError("ROC-AUC readout selection requires two training classes")
     target = (y[train, None] == classes[None, :]).double()
     bias = target.mean(0)
     target = target - bias
@@ -25,12 +30,56 @@ def ridge(h, y, train, val, alphas=(0.01, 0.1, 1.0, 10.0, 100.0)):
         if dual:
             weight = a.T @ weight
         score = centered @ weight + bias
-        acc = float((classes[score[val].argmax(1)] == y[val]).double().mean())
+        if metric == "auc":
+            acc = float(
+                roc_auc_score(y[val].numpy(), (score[val, 1] - score[val, 0]).numpy())
+            )
+        else:
+            acc = float((classes[score[val].argmax(1)] == y[val]).double().mean())
         if best is None or acc > best[0]:
             best = (acc, alpha, score)
-    return best[2].float(), dict(
-        validation_percent=100 * best[0], alpha=best[1], dimensions=h.shape[1]
+    info = dict(
+        validation_percent=100
+        * float((classes[best[2][val].argmax(1)] == y[val]).double().mean()),
+        alpha=best[1],
+        dimensions=h.shape[1],
     )
+    if metric == "auc":
+        info["validation_auc_percent"] = 100 * best[0]
+    return best[2].float(), info
+
+
+def multiscale_ridge(parts, values, y, train, val, metric="accuracy"):
+    """Select a small fixed family of graph filters on validation labels.
+
+    The quadratic sketch approximates a degree-two polynomial kernel. Its
+    random projections are fixed; only the final ridge coefficients are fit.
+    """
+    specs = [
+        ("current", 2, 1.0, False),
+        ("light_values", 2, 0.1, False),
+        ("multiscale", 4, 0.5, False),
+        ("quadratic", 4, 0.5, True),
+    ]
+    best = None
+    records = []
+    for name, hops, weight, quadratic in specs:
+        features = torch.cat(parts[: hops + 1] + [values * weight], dim=1)
+        if quadratic:
+            generator = torch.Generator().manual_seed(42)
+            x = F.normalize(features, dim=1)
+            dimension = 512
+            w = torch.randn(x.shape[1], dimension, generator=generator)
+            v = torch.randn(x.shape[1], dimension, generator=generator)
+            features = torch.cat((features, (x @ w) * (x @ v) / dimension**0.5), dim=1)
+        scores, info = ridge(features, y, train, val, metric=metric)
+        value = info[
+            "validation_auc_percent" if metric == "auc" else "validation_percent"
+        ]
+        records.append(dict(variant=name, **info))
+        if best is None or value > best[0]:
+            best = (value, scores, dict(variant=name, **info))
+    return best[1], dict(**best[2], candidates=records)
 
 
 def hits100(pos, neg):
@@ -38,6 +87,22 @@ def hits100(pos, neg):
     if len(neg) < 100:
         return 1.0
     return float((pos > torch.topk(neg, 100).values[-1]).float().mean())
+
+
+def hard_negative_metrics(positive, negative):
+    """OGB/HeaRT ranks, averaging optimistic and pessimistic ties."""
+    positive = positive.reshape(-1, 1)
+    rank = (
+        1
+        + 0.5 * ((negative >= positive).sum(1) + (negative > positive).sum(1)).double()
+    )
+    return dict(
+        mrr_percent=100 * float((1 / rank).mean()),
+        **{
+            f"hits{k}_percent": 100 * float((rank <= k).double().mean())
+            for k in (10, 20, 100)
+        },
+    )
 
 
 def sampled_negatives(n, train_edges, count, generator):

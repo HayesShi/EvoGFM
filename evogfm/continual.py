@@ -20,7 +20,17 @@ from .training import load_checkpoint, source_packs, score_source
 from .online import OnlineNewton, TaskCoefficientBank, continual_metrics
 
 
-def calibrate(task, checkpoint, data_root, output, stream, future, threads):
+def calibrate(
+    task,
+    checkpoint,
+    data_root,
+    output,
+    stream,
+    future,
+    threads,
+    nc_metric="accuracy",
+    source_anchor=0.0,
+):
     seed_all(42)
     torch.set_num_threads(threads)
     model, head, ckpt = load_checkpoint(checkpoint)
@@ -151,14 +161,30 @@ def calibrate(task, checkpoint, data_root, output, stream, future, threads):
                         n["ctx"],
                         n["base"],
                     )
+                    metric = (
+                        "auc"
+                        if nc_metric == "auto" and len(n["y"].unique()) == 2
+                        else "accuracy"
+                    )
                     _, info = ridge(
                         torch.cat(parts, dim=1),
                         n["y"],
                         n["protocol"]["train"],
                         n["protocol"]["val"],
                         alphas=(0.1,),
+                        metric=metric,
                     )
-                    result[name] = dict(score=info["validation_percent"] / 100)
+                    result[name] = dict(
+                        score=info[
+                            (
+                                "validation_auc_percent"
+                                if metric == "auc"
+                                else "validation_percent"
+                            )
+                        ]
+                        / 100,
+                        metric=metric,
+                    )
                 else:
                     prediction = score(p, "lp_val").numpy()
                     y = p["lp_val"]["y"].numpy()
@@ -196,7 +222,11 @@ def calibrate(task, checkpoint, data_root, output, stream, future, threads):
         sources=ckpt["source_graphs"],
         stream=list(stream),
         future=list(future),
-        metric="NC accuracy" if nc_only else "LP AUC",
+        metric=(
+            ("NC accuracy / binary AUC" if nc_metric == "auto" else "NC accuracy")
+            if nc_only
+            else "LP AUC"
+        ),
         split="validation",
         updated_parameters=k,
         frozen_biases=len(initial) - k,
@@ -207,6 +237,7 @@ def calibrate(task, checkpoint, data_root, output, stream, future, threads):
         steps_per_domain=4,
         line_search=[0, 0.25, 1, 4],
         nc_ridge=0.1,
+        source_anchor=source_anchor,
     )
     save_json(output / f"{task}_configuration.json", settings)
     trajectories = {}
@@ -255,6 +286,12 @@ def calibrate(task, checkpoint, data_root, output, stream, future, threads):
                         ggn(nc)
                         loss = nc_loss
                         curvature = ggn(nc)
+                    if source_anchor:
+                        delta = model.inverse.theta() - initial
+                        loss = (
+                            loss + 0.5 * source_anchor * delta @ source_metric @ delta
+                        )
+                        curvature = curvature + source_anchor * source_metric
                     gradient = flat_gradient(loss).detach()
                     before = model.inverse.theta().detach().clone()
                     proposed = ons.step_gradient(gradient, curvature=curvature)
@@ -283,6 +320,11 @@ def calibrate(task, checkpoint, data_root, output, stream, future, threads):
                                 )
                                 held_nc = float(F.cross_entropy(nc, truth))
                                 value = held_nc
+                            if source_anchor:
+                                delta = candidate - initial
+                                value += float(
+                                    0.5 * source_anchor * delta @ source_metric @ delta
+                                )
                         if value < best:
                             best = value
                             chosen = candidate
@@ -339,13 +381,27 @@ def run(
     future=("roman-empire",),
     task="both",
     threads=4,
+    nc_metric="accuracy",
+    source_anchor=0.0,
 ):
     """Run static/cumulative/reset controls and save the final two-task bank."""
     if set(stream) & set(future):
         raise ValueError("Future domains must be excluded from the adaptation stream")
+    if source_anchor < 0:
+        raise ValueError("source_anchor must be nonnegative")
     tasks = ("nc", "lp") if task == "both" else (task,)
     states = {
-        name: calibrate(name, checkpoint, data_root, output, stream, future, threads)
+        name: calibrate(
+            name,
+            checkpoint,
+            data_root,
+            output,
+            stream,
+            future,
+            threads,
+            nc_metric,
+            source_anchor,
+        )
         for name in tasks
     }
     model, _, _ = load_checkpoint(checkpoint)

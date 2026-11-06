@@ -14,7 +14,15 @@ if __name__ == "__main__":
     args = parser.parse_args()
     for name in args.datasets:
         graph = load_graph(name, args.data_root)
-        if name in ["cora", "citeseer", "roman-empire"]:
+        if name in [
+            "cora",
+            "citeseer",
+            "roman-empire",
+            "amazon-ratings",
+            "minesweeper",
+            "tolokers",
+            "questions",
+        ]:
             load_protocol(name, "nc", args.data_root)
         if name in ["cora", "citeseer"]:
             load_protocol(name, "lp", args.data_root)

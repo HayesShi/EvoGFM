@@ -41,23 +41,39 @@ def propagate(x, edges):
     return torch.from_numpy(matrix @ x.numpy()).float()
 
 
-def pair_channels(x, edges, pairs):
-    """Train-visible topology and label-free content, never query labels."""
+def pair_context(x, edges):
+    """Cache query-independent content for large candidate pools."""
     a = adjacency(edges, len(x)).tocsr()
     degree = np.asarray(a.sum(1)).ravel()
-    cn = a @ a
-    ra = a @ sp.diags(1 / np.maximum(1, degree)) @ a
-    aa = a @ sp.diags(1 / np.log(np.maximum(2, degree))) @ a
-    a3 = cn @ a
-    i, j = pairs
-    ip, jp = i.numpy().copy(), j.numpy().copy()
-
-    def extract(matrix):
-        return torch.from_numpy(np.asarray(matrix[ip, jp]).ravel()).float()
-
     raw = F.normalize(x, dim=1)
     p1 = F.normalize(propagate(x, edges), dim=1)
     p2 = F.normalize(propagate(p1, edges), dim=1)
+    return a, degree, raw, p1, p2
+
+
+def pair_channels(x, edges, pairs, batch_size=256, prepared=None):
+    """Train-visible topology and label-free content, never query labels."""
+    a, degree, raw, p1, p2 = pair_context(x, edges) if prepared is None else prepared
+    i, j = pairs
+    ip, jp = i.numpy().copy(), j.numpy().copy()
+    # Compute only requested entries. Full A² and A³ can become dense even
+    # when the original graph is sparse.
+    inv_degree = 1 / np.maximum(1, degree)
+    inv_log_degree = 1 / np.log(np.maximum(2, degree))
+    structural = []
+    for start in range(0, len(ip), batch_size):
+        left = a[ip[start : start + batch_size]]
+        right = a[jp[start : start + batch_size]]
+        common = left.multiply(right)
+        columns = [
+            np.asarray(common.sum(1)).ravel(),
+            np.asarray(common @ inv_degree).ravel(),
+            np.asarray(common @ inv_log_degree).ravel(),
+            np.asarray((left @ a).multiply(right).sum(1)).ravel(),
+        ]
+        structural.append(torch.from_numpy(np.stack(columns, axis=1)).float())
+    structure = torch.cat(structural) if structural else x.new_empty((0, 4))
+
     deg = torch.from_numpy(degree).float().log1p()
     return torch.stack(
         (
@@ -67,13 +83,30 @@ def pair_channels(x, edges, pairs):
             (raw[i] * p1[j] + p1[i] * raw[j]).sum(1) / 2,
             torch.minimum(deg[i], deg[j]),
             torch.maximum(deg[i], deg[j]),
-            extract(cn).log1p(),
-            extract(ra).log1p(),
-            extract(aa).log1p(),
-            extract(a3).log1p(),
+            structure[:, 0].log1p(),
+            structure[:, 1].log1p(),
+            structure[:, 2].log1p(),
+            structure[:, 3].log1p(),
         ),
         dim=1,
     )
+
+
+def node_representations(model, state, raw, edges, hops=4, uniform=False):
+    """Keep propagation orders separate so the readout can retain local signal."""
+    n = len(raw)
+    visible = torch.cat((edges, edges.flip(0)), dim=1)
+    visible = visible[:, (visible[0] * n + visible[1]).argsort()]
+    weight = attention(model, state, visible, uniform)
+    value = raw
+    parts = [F.normalize(value, dim=1)]
+    for _ in range(hops):
+        value = value.new_zeros(value.shape).index_add_(
+            0, visible[0], weight[:, None] * value[visible[1]]
+        )
+        parts.append(F.normalize(value, dim=1))
+    h = F.normalize(model.embed_graph(state, visible), dim=1)
+    return parts, h
 
 
 def preprocess(data):
@@ -132,13 +165,19 @@ def attention(model, state, visible, uniform=False):
     return numerator / denominator[target].clamp_min(1e-12)
 
 
-def task_features(model, state, raw, edges, pairs, ctx, base, uniform=False):
+def task_features(
+    model, state, raw, edges, pairs, ctx, base, uniform=False, prepared=None
+):
     """All learned affinity comes from the shared inverse-generated Q/K."""
     v = ctx["visible"]
-    w = attention(model, state, v, uniform)
-    p1 = raw.new_zeros(raw.shape).index_add_(0, v[0], w[:, None] * raw[v[1]])
-    p2 = raw.new_zeros(raw.shape).index_add_(0, v[0], w[:, None] * p1[v[1]])
-    z0, z1, z2 = [F.normalize(x, dim=1) for x in [raw, p1, p2]]
+    if prepared is None:
+        w = attention(model, state, v, uniform)
+        p1 = raw.new_zeros(raw.shape).index_add_(0, v[0], w[:, None] * raw[v[1]])
+        p2 = raw.new_zeros(raw.shape).index_add_(0, v[0], w[:, None] * p1[v[1]])
+        z0, z1, z2 = [F.normalize(x, dim=1) for x in [raw, p1, p2]]
+    else:
+        w, parts = prepared
+        z0, z1, z2 = parts[:3]
     i, j = pairs
     shared = w.new_zeros(pairs.shape[1]).index_add_(
         0, ctx["cn_query"], w[ctx["cn_left"]] * w[ctx["cn_right"]]
@@ -168,8 +207,11 @@ def task_features(model, state, raw, edges, pairs, ctx, base, uniform=False):
         )
     parts = (z0, z1, z2)
     if model.config.get("joint_task_backbone", False):
-        # Config annotation is removed before calling the architecture constructor.
-        h = F.normalize(model.embed_graph(state, v), dim=1)
+        h = (
+            F.normalize(model.embed_graph(state, v), dim=1)
+            if prepared is None
+            else prepared[1][-1]
+        )
         extra = torch.cat((extra, (h[i] * h[j]).sum(1, keepdim=True)), dim=1)
         parts = parts + (h,)
     return torch.cat((base, extra), dim=1), parts

@@ -12,4 +12,11 @@ if __name__ == "__main__":
     parser.add_argument("--future", nargs="+", default=["roman-empire"])
     parser.add_argument("--task", choices=["both", "nc", "lp"], default="both")
     parser.add_argument("--threads", type=int, default=4)
+    parser.add_argument("--nc-metric", choices=["accuracy", "auto"], default="accuracy")
+    parser.add_argument(
+        "--source-anchor",
+        type=float,
+        default=0.0,
+        help="Quadratic penalty around source coefficients, weighted by source GGN",
+    )
     run(**vars(parser.parse_args()))

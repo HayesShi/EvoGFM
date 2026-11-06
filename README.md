@@ -9,9 +9,9 @@ flowchart LR
     M --> I["Shared inverse map<br/>recover relation strengths"]
     D --> Q["Construct Q / K"]
     I --> Q
-    Q --> B["Shared Transformer<br/>+ zero / one / two-hop features"]
+    Q --> B["Shared Transformer<br/>+ separate propagation scales"]
     G --> B
-    B --> NC["Node classification<br/>ridge readout"]
+    B --> NC["Node classification<br/>multiscale ridge readout"]
     B --> LP["Link prediction<br/>18-parameter readout adaptation"]
     C["New-domain calibration<br/>training labels / held-out training edges"] -.-> S["Two task states: NC and LP<br/>32 coefficients + curvature each"]
     S -. "update inverse coefficients" .-> I
@@ -59,6 +59,17 @@ python evaluate.py --ablation zero-inverse
 python continual.py
 ```
 
+The expanded experiments add four heterophily graphs and official HeaRT hard negatives:
+
+```bash
+python prepare.py --datasets amazon-ratings minesweeper tolokers questions
+python evaluate.py --nc cora citeseer roman-empire amazon-ratings minesweeper tolokers questions --lp --node-readout adaptive --nc-metric auto --output runs/expanded
+python evaluate.py --nc cora citeseer roman-empire amazon-ratings minesweeper tolokers questions --lp --node-readout adaptive --nc-metric auto --split test --output runs/expanded
+python continual.py --stream cora citeseer amazon-ratings --future minesweeper tolokers --nc-metric auto --output runs/expanded_continual
+```
+
+For HeaRT, place the official Citeseer files from the [benchmark archive](https://github.com/Juanhui28/HeaRT) under `data/heart/citeseer/`: `train_pos.txt`, `valid_pos.txt`, `test_pos.txt`, `heart_valid_samples.npy`, `heart_test_samples.npy`, and `gnn_feature`. Then run `python heart.py` followed by `python heart.py --split test`. The evaluator preserves official candidate ordering and averages tied ranks. [EXPERIMENTS.md](EXPERIMENTS.md) documents the setup, results and ablations.
+
 A short execution check uses `python train.py --sources texas --epochs 1 --output runs/check`. Each entry point accepts `--help`, `--data-root`, `--output` and `--threads` where applicable. Evaluation and continual calibration accept `--checkpoint`.
 
 ## What each experiment measures
@@ -73,6 +84,8 @@ A short execution check uses `python train.py --sources texas --epochs 1 --outpu
 
 **Public adaptation.** NC uses the official training labels with a ridge penalty selected on validation. LP retains the frozen source head and fits 17 residual weights plus an intercept with eight Newton steps. Four masked views use training edges only; a fixed set of calibration pairs stays disjoint from readout fitting across all views. The residual penalty is selected on this calibration holdout.
 
+`--node-readout adaptive` selects among four fixed readouts: the original features, a smaller Transformer contribution, separate zero-to-four-hop features, or those features plus a 512-dimensional quadratic sketch. Selection uses validation labels. `--nc-metric auto` uses ROC-AUC for binary graphs and accuracy otherwise. The original readout remains the default.
+
 **Continual calibration.** Each task updates 32 inverse coefficients; eight bias coefficients remain frozen. Its 40 × 40 curvature metric starts with source task information and accumulates final-logit GGN estimates. The runner compares `static`, `cumulative` and `reset` controls. NC uses official training labels; LP uses a separate native masked-edge split. Future-domain labels are used only for reporting. The same two task states serve every graph; no per-domain adapter is stored.
 
 Continual reports use validation scores. LP continual AUC is a separate experiment from the public NCN Hits@100 protocol. A future score gain is empirical evidence, and can be negative; the runner reports the full trajectory.
@@ -84,22 +97,27 @@ Raw numerical features are row-normalized when nonnegative, then mapped into one
 | Task | Targets | Protocol / published reference |
 | :--- | :--- | :--- |
 | Node classification | Cora, Roman-empire | Planetoid masks / Roman mask column 0, following the saved seed-42 [GraphAny](https://github.com/DeepGraphLearning/GraphAny) convention (ICLR 2025) |
+| Expanded node classification | Citeseer, Amazon-ratings, Minesweeper, Tolokers, Questions | Planetoid masks / official heterophily mask column 0; binary graphs use ROC-AUC |
 | Link prediction | Cora, Citeseer | [NCN](https://github.com/GraphPKU/NeuralCommonNeighbor/blob/main/ogbdataset.py) 70/10/20 split and Hits@100 (ICLR 2024) |
+| Hard link prediction | Citeseer | [HeaRT](https://github.com/Juanhui28/HeaRT) official positives and 500 hard negatives per positive (NeurIPS 2023) |
 
 Public data come from [Planetoid](https://github.com/kimiyoung/planetoid), [GNN Benchmark](https://github.com/shchur/gnn-benchmark), [Geom-GCN](https://github.com/graphdml-uiuc-jlu/geom-gcn) and [Heterophilous Graphs](https://github.com/yandex-research/heterophilous-graphs). The LP splitter preserves PyG's Planetoid edge order before randomization so that the seed-42 splits match the existing experiments.
 
-Recorded development results from the source checkpoint selected at epoch 21:
+Recorded development results from the same source checkpoint selected at epoch 21. NC rows use the expanded readout; the public LP readout is unchanged:
 
 | Public task | EvoGFM, seed 42 | Published reference |
 | :--- | ---: | ---: |
-| Cora NC, accuracy (%) | 75.70 | GraphAny-Wisconsin: 77.82 ± 1.15 |
-| Roman-empire NC, accuracy (%) | 72.20 | GraphAny-Wisconsin: 64.06 ± 0.78 |
+| Cora NC, accuracy (%) | 79.10 | GraphAny-Wisconsin: 77.82 ± 1.15 |
+| Citeseer NC, accuracy (%) | 69.80 | GraphAny-Wisconsin: 67.50 ± 0.44 |
+| Roman-empire NC, accuracy (%) | 73.42 | GraphAny-Wisconsin: 64.06 ± 0.78 |
+| Amazon-ratings NC, accuracy (%) | 44.06 | GraphAny-Wisconsin: 42.57 ± 0.34 |
 | Cora LP, Hits@100 (%) | 86.35 | NCNC: 89.65 ± 1.36 |
 | Citeseer LP, Hits@100 (%) | 92.64 | NCNC: 93.47 ± 0.95 |
+| Citeseer HeaRT LP, MRR (%) | 27.28 | NCN: 28.65 ± 1.21 |
 
 The references are reported by the papers; external baselines were not retrained. Training sources and budgets differ, and these public tests were observed during development. These numbers are development comparisons. Checkpoints are generated locally by `train.py` and are not included in this repository.
 
-Reference tables: [GraphAny, Appendix D, Table 5](https://arxiv.org/html/2405.20445#A4.T5) and [NCN, Table 2](https://arxiv.org/html/2302.00890).
+Reference tables: [GraphAny, Appendix D, Table 5](https://arxiv.org/html/2405.20445#A4.T5), [NCN, Table 2](https://arxiv.org/html/2302.00890), and [HeaRT, Table 4](https://arxiv.org/html/2306.10453). The full [experiment report](EXPERIMENTS.md) includes the three other binary graphs, negative ablations and continual results; [results.json](results.json) stores the measured values.
 
 ## Files and outputs
 
@@ -107,6 +125,7 @@ Reference tables: [GraphAny, Appendix D, Table 5](https://arxiv.org/html/2405.20
 prepare.py                  Download data and create evaluation splits
 train.py                    Source training
 evaluate.py                 Public NC / LP evaluation and inverse ablation
+heart.py                    Official HeaRT hard-negative evaluation
 continual.py                Task-conditioned stream experiments
 evogfm/model.py             Inverse map and programmed attention
 evogfm/features.py          Graph frame, propagation and pair features
@@ -117,6 +136,8 @@ evogfm/training.py          Source objective and checkpoint loading
 evogfm/evaluation.py        Masked-view LP adaptation and public evaluation
 evogfm/continual.py         Curvature calibration and stream measurements
 tests/                      Numerical and protocol regression tests
+EXPERIMENTS.md              Expanded experiments and mechanism findings
+results.json                Measured development results
 1106-EvoGFM_paper.md         Original supplied manuscript draft
 ```
 
