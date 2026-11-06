@@ -24,6 +24,8 @@ if __name__ == "__main__":
             "questions",
             "actor",
             "ogbn-arxiv",
+            "computers",
+            "wikics",
         ]:
             load_protocol(name, "nc", args.data_root)
         if name in ["cora", "citeseer"]:

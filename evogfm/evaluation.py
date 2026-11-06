@@ -193,7 +193,7 @@ def evaluate(
             parts, values = node_representations(
                 model, state, raw, edges, hops=2 if node_readout == "current" else 4
             )
-            if node_readout == "enhanced":
+            if node_readout in ("enhanced", "advanced"):
                 scores, info = enhanced_ridge(
                     parts,
                     values,
@@ -202,6 +202,7 @@ def evaluate(
                     protocol["val"],
                     label_transition(model, state, edges),
                     metric=metric,
+                    advanced=node_readout == "advanced",
                 )
             elif node_readout == "adaptive":
                 scores, info = multiscale_ridge(

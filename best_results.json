@@ -1,0 +1,350 @@
+{
+  "scope": "Best observed complete EvoGFM releases V4-V6; development summary, not a single configuration.",
+  "node_accuracy": {
+    "cora": {
+      "value": 79.60000038146973,
+      "version": "V5",
+      "source": "runs/enhanced_v5/test_none.json",
+      "metric": "accuracy_percent"
+    },
+    "citeseer": {
+      "value": 69.80000138282776,
+      "version": "V4",
+      "source": "runs/expanded_v4/test_none.json",
+      "metric": "accuracy_percent"
+    },
+    "roman-empire": {
+      "value": 74.37345385551453,
+      "version": "V5",
+      "source": "runs/enhanced_v5/test_none.json",
+      "metric": "accuracy_percent"
+    },
+    "minesweeper": {
+      "value": 85.39999723434448,
+      "version": "V5",
+      "source": "runs/enhanced_v5/test_none.json",
+      "metric": "accuracy_percent"
+    },
+    "tolokers": {
+      "value": 79.14965748786926,
+      "version": "V6",
+      "source": "runs/advanced_v6/test_none.json",
+      "metric": "accuracy_percent"
+    },
+    "amazon-ratings": {
+      "value": 47.19908535480499,
+      "version": "V5",
+      "source": "runs/enhanced_v5/test_none.json",
+      "metric": "accuracy_percent"
+    },
+    "questions": {
+      "value": 97.015780210495,
+      "version": "V4",
+      "source": "runs/questions_v4/test_none.json",
+      "metric": "accuracy_percent"
+    },
+    "actor": {
+      "value": 33.618420362472534,
+      "version": "V4读出",
+      "source": "runs/large_baseline_v5/test_none.json",
+      "metric": "accuracy_percent"
+    },
+    "ogbn-arxiv": {
+      "value": 67.88469552993774,
+      "version": "V6",
+      "source": "runs/advanced_v6/test_none.json",
+      "metric": "accuracy_percent"
+    },
+    "computers": {
+      "value": 84.7254991531372,
+      "version": "V6",
+      "source": "runs/advanced_v6/test_none.json",
+      "metric": "accuracy_percent"
+    },
+    "wikics": {
+      "value": 79.75029945373535,
+      "version": "V6",
+      "source": "runs/advanced_v6/test_none.json",
+      "metric": "accuracy_percent"
+    }
+  },
+  "node_auc": {
+    "minesweeper": {
+      "value": 89.15520000000001,
+      "version": "V5",
+      "source": "runs/enhanced_v5/test_none.json",
+      "metric": "auc_percent"
+    },
+    "tolokers": {
+      "value": 80.72463797586416,
+      "version": "V6",
+      "source": "runs/advanced_v6/test_none.json",
+      "metric": "auc_percent"
+    },
+    "questions": {
+      "value": 76.23698653225863,
+      "version": "V6",
+      "source": "runs/advanced_v6/test_none.json",
+      "metric": "auc_percent"
+    }
+  },
+  "graph_classification": {
+    "PROTEINS": {
+      "variant": "evogfm",
+      "accuracy_percent": 77.17503217503217,
+      "fold_std_percent": 2.61069259907121,
+      "folds": [
+        {
+          "fold": 1,
+          "accuracy_percent": 78.57142857142857,
+          "parameters": {
+            "graphscale__weight": 0.1,
+            "svc__C": 1.0
+          }
+        },
+        {
+          "fold": 2,
+          "accuracy_percent": 75.89285714285714,
+          "parameters": {
+            "graphscale__weight": 0.1,
+            "svc__C": 1.0
+          }
+        },
+        {
+          "fold": 3,
+          "accuracy_percent": 81.25,
+          "parameters": {
+            "graphscale__weight": 1.0,
+            "svc__C": 1.0
+          }
+        },
+        {
+          "fold": 4,
+          "accuracy_percent": 78.37837837837837,
+          "parameters": {
+            "graphscale__weight": 1.0,
+            "svc__C": 1.0
+          }
+        },
+        {
+          "fold": 5,
+          "accuracy_percent": 76.57657657657657,
+          "parameters": {
+            "graphscale__weight": 1.0,
+            "svc__C": 1.0
+          }
+        },
+        {
+          "fold": 6,
+          "accuracy_percent": 81.08108108108108,
+          "parameters": {
+            "graphscale__weight": 0.1,
+            "svc__C": 1.0
+          }
+        },
+        {
+          "fold": 7,
+          "accuracy_percent": 73.87387387387388,
+          "parameters": {
+            "graphscale__weight": 0.1,
+            "svc__C": 1.0
+          }
+        },
+        {
+          "fold": 8,
+          "accuracy_percent": 77.47747747747748,
+          "parameters": {
+            "graphscale__weight": 0.1,
+            "svc__C": 1.0
+          }
+        },
+        {
+          "fold": 9,
+          "accuracy_percent": 75.67567567567568,
+          "parameters": {
+            "graphscale__weight": 1.0,
+            "svc__C": 1.0
+          }
+        },
+        {
+          "fold": 10,
+          "accuracy_percent": 72.97297297297297,
+          "parameters": {
+            "graphscale__weight": 1.0,
+            "svc__C": 1.0
+          }
+        }
+      ]
+    },
+    "NCI1": {
+      "variant": "evogfm",
+      "accuracy_percent": 78.3941605839416,
+      "fold_std_percent": 2.029261261507841,
+      "folds": [
+        {
+          "fold": 1,
+          "accuracy_percent": 77.12895377128953,
+          "parameters": {
+            "graphscale__weight": 1.0,
+            "svc__C": 100.0
+          }
+        },
+        {
+          "fold": 2,
+          "accuracy_percent": 80.04866180048663,
+          "parameters": {
+            "graphscale__weight": 1.0,
+            "svc__C": 100.0
+          }
+        },
+        {
+          "fold": 3,
+          "accuracy_percent": 78.1021897810219,
+          "parameters": {
+            "graphscale__weight": 1.0,
+            "svc__C": 100.0
+          }
+        },
+        {
+          "fold": 4,
+          "accuracy_percent": 75.4257907542579,
+          "parameters": {
+            "graphscale__weight": 1.0,
+            "svc__C": 10.0
+          }
+        },
+        {
+          "fold": 5,
+          "accuracy_percent": 81.99513381995133,
+          "parameters": {
+            "graphscale__weight": 1.0,
+            "svc__C": 10.0
+          }
+        },
+        {
+          "fold": 6,
+          "accuracy_percent": 76.88564476885644,
+          "parameters": {
+            "graphscale__weight": 1.0,
+            "svc__C": 100.0
+          }
+        },
+        {
+          "fold": 7,
+          "accuracy_percent": 80.7785888077859,
+          "parameters": {
+            "graphscale__weight": 1.0,
+            "svc__C": 10.0
+          }
+        },
+        {
+          "fold": 8,
+          "accuracy_percent": 77.37226277372264,
+          "parameters": {
+            "graphscale__weight": 1.0,
+            "svc__C": 10.0
+          }
+        },
+        {
+          "fold": 9,
+          "accuracy_percent": 79.80535279805353,
+          "parameters": {
+            "graphscale__weight": 1.0,
+            "svc__C": 100.0
+          }
+        },
+        {
+          "fold": 10,
+          "accuracy_percent": 76.39902676399026,
+          "parameters": {
+            "graphscale__weight": 10.0,
+            "svc__C": 10.0
+          }
+        }
+      ]
+    }
+  },
+  "link": [
+    {
+      "dataset": "cora",
+      "task": "lp",
+      "kind": "none",
+      "test_hits100_percent": 86.3507091999054,
+      "test_auc": 0.950257182003998,
+      "selected_ridge": 10.0,
+      "reference_method": "NCNC (ICLR 2024)",
+      "reference_mean": 89.65,
+      "reference_std": 1.36,
+      "difference_pp": -3.29929080009461
+    },
+    {
+      "dataset": "citeseer",
+      "task": "lp",
+      "kind": "none",
+      "test_hits100_percent": 92.63736009597778,
+      "test_auc": 0.9662359618403573,
+      "selected_ridge": 10.0,
+      "reference_method": "NCNC (ICLR 2024)",
+      "reference_mean": 93.47,
+      "reference_std": 0.95,
+      "difference_pp": -0.8326399040222157
+    }
+  ],
+  "table_sources": {
+    "graphany_main": {
+      "table": "S4.T2",
+      "source": "optimization_v4/sources/graphany.txt"
+    },
+    "graphany": {
+      "table": "A4.T5",
+      "source": "optimization_v4/sources/graphany.txt"
+    },
+    "ncn": {
+      "table": "S6.T2",
+      "source": "optimization_v4/sources/ncn.txt"
+    },
+    "heart": {
+      "table": "S4.T4",
+      "source": "optimization_v4/sources/heart.txt"
+    },
+    "graphcl": {
+      "table": "S5.T4",
+      "source": "optimization_v5/sources/graphcl_youli2020.txt"
+    }
+  },
+  "heart": {
+    "uniform_validation_mrr_percent": 24.117490926056075,
+    "uniform_test_mrr_percent": 27.284835737985837,
+    "uniform_test_hits10_percent": 54.72527472527473,
+    "mixed_validation": {
+      "dataset": "citeseer",
+      "protocol": "official HeaRT",
+      "split": "valid",
+      "ablation": "none",
+      "seed": 42,
+      "negative_mode": "mixed",
+      "source_epoch": 21,
+      "positive_pairs": 227,
+      "negatives_per_positive": 500,
+      "mrr_percent": 28.647481589293726,
+      "hits10_percent": 46.69603524229075,
+      "hits20_percent": 61.67400881057269,
+      "hits100_percent": 88.10572687224669
+    },
+    "mixed_test": {
+      "dataset": "citeseer",
+      "protocol": "official HeaRT",
+      "split": "test",
+      "ablation": "none",
+      "seed": 42,
+      "negative_mode": "mixed",
+      "source_epoch": 21,
+      "positive_pairs": 455,
+      "negatives_per_positive": 500,
+      "mrr_percent": 31.171560008678362,
+      "hits10_percent": 51.868131868131876,
+      "hits20_percent": 62.637362637362635,
+      "hits100_percent": 86.37362637362638
+    }
+  }
+}

@@ -352,8 +352,8 @@ def load_graph(name, data_root="data"):
             y=torch.tensor([nodes[i][1] for i in ids]),
             edges=canonical_edges(edges, len(ids)),
         )
-    elif name == "photo":
-        filename = "amazon_electronics_photo.npz"
+    elif name in ("photo", "computers"):
+        filename = f"amazon_electronics_{name}.npz"
         path = download(
             "https://raw.githubusercontent.com/shchur/gnn-benchmark/master/data/npz/"
             + filename,
@@ -375,6 +375,44 @@ def load_graph(name, data_root="data"):
                     torch.from_numpy(np.stack(a.nonzero())), x.shape[0]
                 ),
             )
+        if name == "computers":
+            from sklearn.model_selection import train_test_split
+
+            # GraphAny's semi-supervised split: 20*C train nodes in total,
+            # stratified twice with seed 42; the remainder is split equally.
+            ids = np.arange(len(graph["y"]))
+            train, rest = train_test_split(
+                ids,
+                test_size=(len(ids) - 20 * len(graph["y"].unique())) / len(ids),
+                random_state=42,
+                stratify=graph["y"].numpy(),
+            )
+            val, test = train_test_split(
+                rest, test_size=0.5, random_state=42, stratify=graph["y"][rest].numpy()
+            )
+            graph.update(
+                train=torch.from_numpy(train),
+                val=torch.from_numpy(val),
+                test=torch.from_numpy(test),
+            )
+    elif name == "wikics":
+        path = download(
+            "https://raw.githubusercontent.com/pmernyei/wiki-cs-dataset/master/dataset/data.json",
+            raw / name / "data.json",
+        )
+        source = json.loads(path.read_text())
+        edges = torch.tensor(
+            [(i, j) for i, neighbors in enumerate(source["links"]) for j in neighbors],
+            dtype=torch.long,
+        ).T
+        graph = dict(
+            x=torch.tensor(source["features"], dtype=torch.float32),
+            y=torch.tensor(source["labels"], dtype=torch.long),
+            edges=canonical_edges(edges, len(source["labels"])),
+        )
+        for part in ("train", "val", "test"):
+            mask = source["test_mask"] if part == "test" else source[part + "_masks"][0]
+            graph[part] = torch.where(torch.tensor(mask, dtype=torch.bool))[0]
     elif name in [
         "roman-empire",
         "amazon-ratings",
@@ -466,21 +504,28 @@ def load_protocol(name, task, data_root="data"):
 
 def load_proteins(data_root="data"):
     """TU PROTEINS graphs with one-hot node labels, excluding node attributes."""
-    folder = Path(data_root) / "raw/proteins/PROTEINS"
+    return load_tu("PROTEINS", data_root)
+
+
+def load_tu(name, data_root="data"):
+    """TU graph classification with one-hot node labels and no node attributes."""
+    if name not in ("PROTEINS", "NCI1"):
+        raise ValueError("Supported TU datasets: PROTEINS and NCI1")
+    folder = Path(data_root) / "raw" / name.lower() / name
     suffixes = ("A", "graph_indicator", "graph_labels", "node_labels")
-    if not (folder / "PROTEINS_A.txt").exists():
+    if not (folder / f"{name}_A.txt").exists():
         archive = download(
-            "https://www.chrsmrrs.com/graphkerneldatasets/PROTEINS.zip",
-            folder.parent / "PROTEINS.zip",
+            f"https://www.chrsmrrs.com/graphkerneldatasets/{name}.zip",
+            folder.parent / f"{name}.zip",
         )
         folder.mkdir(parents=True, exist_ok=True)
         with zipfile.ZipFile(archive) as source:
             for suffix in suffixes:
-                filename = f"PROTEINS_{suffix}.txt"
-                (folder / filename).write_bytes(source.read("PROTEINS/" + filename))
+                filename = f"{name}_{suffix}.txt"
+                (folder / filename).write_bytes(source.read(name + "/" + filename))
     arrays = {
         suffix: torch.from_numpy(
-            np.loadtxt(folder / f"PROTEINS_{suffix}.txt", delimiter=",", dtype=np.int64)
+            np.loadtxt(folder / f"{name}_{suffix}.txt", delimiter=",", dtype=np.int64)
         )
         for suffix in suffixes
     }

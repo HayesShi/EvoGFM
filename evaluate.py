@@ -14,7 +14,9 @@ if __name__ == "__main__":
     parser.add_argument("--lp", nargs="*", default=["cora", "citeseer"])
     parser.add_argument("--threads", type=int, default=4)
     parser.add_argument(
-        "--node-readout", choices=["current", "adaptive", "enhanced"], default="current"
+        "--node-readout",
+        choices=["current", "adaptive", "enhanced", "advanced"],
+        default="current",
     )
     parser.add_argument(
         "--nc-metric", choices=["accuracy", "auc", "auto"], default="accuracy"

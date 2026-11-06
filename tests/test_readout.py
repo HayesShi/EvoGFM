@@ -2,7 +2,13 @@ import pytest
 import torch
 from sklearn.metrics import roc_auc_score
 
-from evogfm.readout import ridge, hard_negative_metrics, diffuse_labels
+from evogfm.readout import (
+    ridge,
+    hard_negative_metrics,
+    diffuse_labels,
+    correct_labels,
+    nystrom_features,
+)
 
 
 def test_auc_selection_matches_direct_solve_and_ignores_test_labels():
@@ -61,3 +67,30 @@ def test_diffusion_uses_only_train_labels_and_preserves_isolated_predictions():
     )
     assert torch.allclose(actual[2], torch.tensor([0.75, 0.25]))
     assert torch.equal(actual[3], torch.tensor([0.5, 0.5]))
+
+
+def test_error_correction_ignores_nontraining_labels_and_preserves_isolates():
+    import scipy.sparse as sp
+
+    transition = sp.csr_matrix(
+        ([1.0, 1.0], ([0, 2], [2, 0])), shape=(4, 4), dtype="float32"
+    )
+    scores = torch.tensor([[0.0, 0.5], [0.5, 0.0], [0.0, 0.5], [0.0, 0.5]])
+    labels = torch.tensor([0, 1, 0, 0])
+    train = torch.tensor([0, 1])
+    first = correct_labels(scores, labels, train, transition)
+    changed = labels.clone()
+    changed[2:] = 1 - changed[2:]
+    assert torch.equal(first, correct_labels(scores, changed, train, transition))
+    assert torch.allclose(first.sum(1), torch.ones(4))
+    assert torch.allclose(first[3], (8 * scores[3]).softmax(0))
+    assert first[2, 0] > (8 * scores[2]).softmax(0)[0]
+
+
+def test_nystrom_handles_repeated_landmarks_without_nonfinite_features():
+    features = torch.tensor([[1.0, 0.0], [1.0, 0.0], [0.0, 1.0]])
+    actual = nystrom_features(features, gamma=1.0, landmarks=3)
+    assert torch.isfinite(actual).all()
+    assert torch.equal(actual[0], actual[1])
+    expected = torch.exp(-torch.cdist(features, features).square())
+    assert torch.allclose(actual @ actual.T, expected, atol=1e-4)

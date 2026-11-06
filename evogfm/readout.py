@@ -98,7 +98,43 @@ def diffuse_labels(scores, y, train, transition, alpha, steps=20):
     return torch.from_numpy(probabilities)
 
 
-def enhanced_ridge(parts, values, y, train, val, transition, metric="accuracy"):
+def correct_labels(scores, y, train, transition, alpha=0.8, steps=20):
+    """Diffuse training prediction errors, then rescale using training errors only."""
+    import numpy as np
+
+    prior = (8 * scores).softmax(1).numpy()
+    classes = y[train].unique(sorted=True)
+    residual = np.zeros_like(prior)
+    residual[train.numpy()] = (y[train, None] == classes[None, :]).numpy() - prior[
+        train.numpy()
+    ]
+    error = residual.copy()
+    for _ in range(steps):
+        error = (1 - alpha) * residual + alpha * (transition @ error)
+    magnitude = np.abs(error[train.numpy()]).mean()
+    scale = np.abs(residual[train.numpy()]).mean() / max(float(magnitude), 1e-8)
+    corrected = np.maximum(prior + scale * error, 1e-8)
+    corrected /= corrected.sum(1, keepdims=True)
+    return torch.from_numpy(corrected)
+
+
+def nystrom_features(features, gamma, landmarks=256):
+    """Label-free Nyström features for an RBF kernel on normalized representations."""
+    x = F.normalize(features, dim=1)
+    ids = torch.randperm(len(x), generator=torch.Generator().manual_seed(42))[
+        :landmarks
+    ]
+    centers = x[ids]
+    cross = (-gamma * (2 - 2 * x @ centers.T).clamp_min(0)).exp()
+    gram = (-gamma * (2 - 2 * centers @ centers.T).clamp_min(0)).exp().double()
+    eigenvalues, eigenvectors = torch.linalg.eigh(gram)
+    basis = eigenvectors / eigenvalues.clamp_min(1e-6).sqrt()[None, :]
+    return cross @ basis.float()
+
+
+def enhanced_ridge(
+    parts, values, y, train, val, transition, metric="accuracy", advanced=False
+):
     """Multiscale ridge, a larger quadratic sketch and train-label diffusion.
 
     A new component must improve validation by more than 0.1 percentage point;
@@ -127,6 +163,19 @@ def enhanced_ridge(parts, values, y, train, val, transition, metric="accuracy"):
     records.append(dict(**configuration, validation_score_percent=score_value))
     if score_value > best_value + 0.1:
         scores, best_value, best_info = candidate, score_value, configuration
+    if advanced:
+        for gamma in (1.0, 4.0):
+            kernel = nystrom_features(features, gamma)
+            candidate, fit = ridge(
+                torch.cat((features, kernel), dim=1), y, train, val, metric=metric
+            )
+            score_value = measure(candidate)
+            configuration = dict(
+                variant=f"rbf{gamma:g}", alpha=fit["alpha"], diffusion=0.0
+            )
+            records.append(dict(**configuration, validation_score_percent=score_value))
+            if score_value > best_value + 0.1:
+                scores, best_value, best_info = candidate, score_value, configuration
     base = scores
     base_info = best_info.copy()
     for alpha in (0.5, 0.9):
@@ -136,6 +185,20 @@ def enhanced_ridge(parts, values, y, train, val, transition, metric="accuracy"):
         records.append(dict(**configuration, validation_score_percent=score_value))
         if score_value > best_value + 0.1:
             scores, best_value, best_info = candidate, score_value, configuration
+    if advanced:
+        corrected = correct_labels(base, y, train, transition)
+        corrected_logits = corrected.clamp_min(1e-8).log() / 8
+        for alpha in (0.0, 0.5, 0.9):
+            candidate = (
+                corrected
+                if alpha == 0
+                else diffuse_labels(corrected_logits, y, train, transition, alpha)
+            )
+            score_value = measure(candidate)
+            configuration = dict(base_info, correction=True, diffusion=alpha)
+            records.append(dict(**configuration, validation_score_percent=score_value))
+            if score_value > best_value + 0.1:
+                scores, best_value, best_info = candidate, score_value, configuration
     return scores, dict(
         **best_info,
         validation_percent=100
