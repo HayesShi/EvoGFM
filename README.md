@@ -1,1 +1,140 @@
 # EvoGFM
+
+**Recover graph-specific attention from observations; accumulate experience in a shared inverse map.**
+
+```mermaid
+flowchart LR
+    G["New graph<br/>node features + visible edges"] --> M["Graph statistics<br/>whitening + edge cross-moment"]
+    M --> D["Graph-specific<br/>spectral directions"]
+    M --> I["Shared inverse map<br/>recover relation strengths"]
+    D --> Q["Construct Q / K"]
+    I --> Q
+    Q --> B["Shared Transformer<br/>+ zero / one / two-hop features"]
+    G --> B
+    B --> NC["Node classification<br/>ridge readout"]
+    B --> LP["Link prediction<br/>18-parameter readout adaptation"]
+    C["New-domain calibration<br/>training labels / held-out training edges"] -.-> S["Two task states: NC and LP<br/>32 coefficients + curvature each"]
+    S -. "update inverse coefficients" .-> I
+    classDef shared fill:#e8f1fb,stroke:#4a78ad,color:#182c45;
+    classDef task fill:#fdf0dd,stroke:#bd8c43,color:#493216;
+    class I,B shared;
+    class NC,LP,S task;
+```
+
+The model estimates relation directions from each graph and uses one learned inverse family to recover their strengths. It constructs attention in a forward pass. Source training learns the shared model; target adaptation freezes its weights. Continual calibration keeps two small states keyed by **task type**, shared across graph domains.
+
+The [paper draft](1106-EvoGFM_paper.md) is included unchanged. This release contains the current empirical implementation, including task-conditioned calibration and the LP residual readout. The draft's convex relation-calibration analysis does not provide a regret guarantee for the nonlinear task-logit GGN optimizer used by `continual.py`.
+
+## Install
+
+Python 3.10+ and PyTorch 2.6. The current commands run on CPU with four threads; a GPU is not required.
+
+```bash
+git clone https://github.com/HayesShi/EvoGFM.git
+cd EvoGFM
+python -m pip install -r requirements.txt
+```
+
+## Run
+
+Run these commands from the repository root, in the same terminal environment where Python is installed. Downloads and experiments show progress bars.
+
+```bash
+# Download source / target graphs and prepare public evaluation splits.
+python prepare.py
+
+# Train on Pubmed, Photo and Texas; select the checkpoint on source validation.
+python train.py --epochs 60
+
+# Public node classification and link prediction: validation first.
+python evaluate.py
+
+# Evaluate the selected configuration on public tests.
+python evaluate.py --split test
+
+# Mechanism ablation: zero inverse amplitudes / biases and refit the LP readout.
+python evaluate.py --ablation zero-inverse
+
+# Stream Cora -> Citeseer; measure Roman-empire as the future domain.
+python continual.py
+```
+
+A short execution check uses `python train.py --sources texas --epochs 1 --output runs/check`. Each entry point accepts `--help`, `--data-root`, `--output` and `--threads` where applicable. Evaluation and continual calibration accept `--checkpoint`.
+
+## What each experiment measures
+
+| Goal | Procedure | Report |
+| :--- | :--- | :--- |
+| Fast adaptation | Freeze the source model; fit an NC ridge head or an LP residual readout | Accuracy / Hits@100 / AUC |
+| Knowledge retention | Adapt along the domain stream and re-evaluate earlier domains | Final average, forgetting, backward transfer |
+| Knowledge accumulation | Evaluate future domains at every stream prefix without adapting on them | Future score curve and gain |
+
+**Source training.** Default sources are Pubmed, Photo and Texas, seed 42. The objective combines source link BCE, hard-negative ranking and episodic node classification. Training performs four updates per epoch for 60 epochs. All learned weights are selected using source validation.
+
+**Public adaptation.** NC uses the official training labels with a ridge penalty selected on validation. LP retains the frozen source head and fits 17 residual weights plus an intercept with eight Newton steps. Four masked views use training edges only; a fixed set of calibration pairs stays disjoint from readout fitting across all views. The residual penalty is selected on this calibration holdout.
+
+**Continual calibration.** Each task updates 32 inverse coefficients; eight bias coefficients remain frozen. Its 40 × 40 curvature metric starts with source task information and accumulates final-logit GGN estimates. The runner compares `static`, `cumulative` and `reset` controls. NC uses official training labels; LP uses a separate native masked-edge split. Future-domain labels are used only for reporting. The same two task states serve every graph; no per-domain adapter is stored.
+
+Continual reports use validation scores. LP continual AUC is a separate experiment from the public NCN Hits@100 protocol. A future score gain is empirical evidence, and can be negative; the runner reports the full trajectory.
+
+## Data and public references
+
+Raw numerical features are row-normalized when nonnegative, then mapped into one graph-wide SVD100 frame. The original features remain available to the task readouts. Data downloads and generated splits are cached under `data/`.
+
+| Task | Targets | Protocol / published reference |
+| :--- | :--- | :--- |
+| Node classification | Cora, Roman-empire | Planetoid masks / Roman mask column 0, following the saved seed-42 [GraphAny](https://github.com/DeepGraphLearning/GraphAny) convention (ICLR 2025) |
+| Link prediction | Cora, Citeseer | [NCN](https://github.com/GraphPKU/NeuralCommonNeighbor/blob/main/ogbdataset.py) 70/10/20 split and Hits@100 (ICLR 2024) |
+
+Public data come from [Planetoid](https://github.com/kimiyoung/planetoid), [GNN Benchmark](https://github.com/shchur/gnn-benchmark), [Geom-GCN](https://github.com/graphdml-uiuc-jlu/geom-gcn) and [Heterophilous Graphs](https://github.com/yandex-research/heterophilous-graphs). The LP splitter preserves PyG's Planetoid edge order before randomization so that the seed-42 splits match the existing experiments.
+
+Recorded development results from the source checkpoint selected at epoch 21:
+
+| Public task | EvoGFM, seed 42 | Published reference |
+| :--- | ---: | ---: |
+| Cora NC, accuracy (%) | 75.70 | GraphAny-Wisconsin: 77.82 ± 1.15 |
+| Roman-empire NC, accuracy (%) | 72.20 | GraphAny-Wisconsin: 64.06 ± 0.78 |
+| Cora LP, Hits@100 (%) | 86.35 | NCNC: 89.65 ± 1.36 |
+| Citeseer LP, Hits@100 (%) | 92.64 | NCNC: 93.47 ± 0.95 |
+
+The references are reported by the papers; external baselines were not retrained. Training sources and budgets differ, and these public tests were observed during development. These numbers are development comparisons. Checkpoints are generated locally by `train.py` and are not included in this repository.
+
+Reference tables: [GraphAny, Appendix D, Table 5](https://arxiv.org/html/2405.20445#A4.T5) and [NCN, Table 2](https://arxiv.org/html/2302.00890).
+
+## Files and outputs
+
+```text
+prepare.py                  Download data and create evaluation splits
+train.py                    Source training
+evaluate.py                 Public NC / LP evaluation and inverse ablation
+continual.py                Task-conditioned stream experiments
+evogfm/model.py             Inverse map and programmed attention
+evogfm/features.py          Graph frame, propagation and pair features
+evogfm/data.py              Graph loaders and split protocols
+evogfm/readout.py           Ridge and offset-logistic readouts
+evogfm/online.py            Online Newton update and task-state bank
+evogfm/training.py          Source objective and checkpoint loading
+evogfm/evaluation.py        Masked-view LP adaptation and public evaluation
+evogfm/continual.py         Curvature calibration and stream measurements
+tests/                      Numerical and protocol regression tests
+1106-EvoGFM_paper.md         Original supplied manuscript draft
+```
+
+Default outputs are `runs/source/best.pt`, `runs/public/val_none.json` and `runs/continual/{nc,lp}_validation.json`. Continual snapshots and the final `task_bank.pt` include coefficient vectors and curvature metrics. Data, weights and run outputs stay local.
+
+To load an existing checkpoint:
+
+```python
+from evogfm.training import load_checkpoint
+
+model, link_head, metadata = load_checkpoint("runs/source/best.pt")
+```
+
+## Development checks
+
+```bash
+python -m pip install -e ".[dev]"
+python -m pytest -q
+python -m ruff check .
+python -m black --check .
+```
