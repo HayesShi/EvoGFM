@@ -34,6 +34,7 @@ def evaluate(
     batch_size=2048,
     ablation="none",
     threads=4,
+    negative_mode="uniform",
 ):
     seed_all(42)
     torch.set_num_threads(threads)
@@ -60,7 +61,9 @@ def evaluate(
     if ablation == "zero-inverse":
         model.inverse.set_theta(torch.zeros_like(model.inverse.theta()))
     # All readout fitting stays inside the training graph, as in public LP.
-    fitted = fit_link_readout(model, head, raw, x, edges, observation_rate=0.85)
+    fitted = fit_link_readout(
+        model, head, raw, x, edges, observation_rate=0.85, negative_mode=negative_mode
+    )
     score_parts = []
     with torch.no_grad():
         state = model.state(x, edges, 0.85)
@@ -89,6 +92,7 @@ def evaluate(
         split=split,
         ablation=ablation,
         seed=42,
+        negative_mode=negative_mode,
         source_epoch=ckpt["epoch"],
         positive_pairs=len(positives),
         negatives_per_positive=negative.shape[1],
@@ -111,4 +115,7 @@ if __name__ == "__main__":
     parser.add_argument("--batch-size", type=int, default=2048)
     parser.add_argument("--threads", type=int, default=4)
     parser.add_argument("--ablation", choices=["none", "zero-inverse"], default="none")
+    parser.add_argument(
+        "--negative-mode", choices=["uniform", "mixed"], default="uniform"
+    )
     evaluate(**vars(parser.parse_args()))

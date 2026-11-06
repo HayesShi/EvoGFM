@@ -2,7 +2,7 @@ import pytest
 import torch
 from sklearn.metrics import roc_auc_score
 
-from evogfm.readout import ridge, hard_negative_metrics
+from evogfm.readout import ridge, hard_negative_metrics, diffuse_labels
 
 
 def test_auc_selection_matches_direct_solve_and_ignores_test_labels():
@@ -42,3 +42,22 @@ def test_heart_averages_tied_ranks():
     assert metrics["mrr_percent"] == pytest.approx(100 * (1 + 1 / 3 + 1 / 13) / 3)
     assert metrics["hits10_percent"] == pytest.approx(200 / 3)
     assert metrics["hits20_percent"] == 100
+
+
+def test_diffusion_uses_only_train_labels_and_preserves_isolated_predictions():
+    import scipy.sparse as sp
+
+    transition = sp.csr_matrix(
+        ([1.0, 1.0], ([0, 2], [2, 0])), shape=(4, 4), dtype="float32"
+    )
+    scores = torch.zeros(4, 2)
+    train = torch.tensor([0, 1])
+    y = torch.tensor([0, 1, 1, 0])
+    actual = diffuse_labels(scores, y, train, transition, alpha=0.5)
+    changed = y.clone()
+    changed[2:] = 1 - changed[2:]
+    assert torch.equal(
+        actual, diffuse_labels(scores, changed, train, transition, alpha=0.5)
+    )
+    assert torch.allclose(actual[2], torch.tensor([0.75, 0.25]))
+    assert torch.equal(actual[3], torch.tensor([0.5, 0.5]))

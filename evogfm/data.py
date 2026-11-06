@@ -5,6 +5,9 @@ import concurrent.futures
 import json
 import pickle
 import os
+import gzip
+import zipfile
+from contextlib import nullcontext
 import urllib.request
 import numpy as np
 import scipy.sparse as sp
@@ -254,6 +257,75 @@ def load_graph(name, data_root="data"):
                 np.loadtxt(raw / name / f"ind.{name}.test.index", dtype=np.int64)
             ),
         )
+    elif name == "ogbn-arxiv":
+        folder = raw / name / "arxiv"
+        archive_context = (
+            nullcontext(None)
+            if (folder / "raw/node-feat.csv.gz").exists()
+            else zipfile.ZipFile(
+                download(
+                    "https://snap.stanford.edu/ogb/data/nodeproppred/arxiv.zip",
+                    raw / name / "arxiv.zip",
+                )
+            )
+        )
+        with archive_context as archive:
+
+            def read_csv(member, dtype):
+                stream = (
+                    (folder / member).open("rb")
+                    if archive is None
+                    else archive.open("arxiv/" + member)
+                )
+                with stream as compressed:
+                    return np.loadtxt(
+                        gzip.GzipFile(fileobj=compressed), delimiter=",", dtype=dtype
+                    )
+
+            x = torch.from_numpy(read_csv("raw/node-feat.csv.gz", np.float32))
+            graph = dict(
+                x=x,
+                y=torch.from_numpy(read_csv("raw/node-label.csv.gz", np.int64)),
+                edges=canonical_edges(read_csv("raw/edge.csv.gz", np.int64).T, len(x)),
+            )
+            for part in ["train", "valid", "test"]:
+                graph["val" if part == "valid" else part] = torch.from_numpy(
+                    read_csv(f"split/time/{part}.csv.gz", np.int64)
+                )
+    elif name == "actor":
+        base = "https://raw.githubusercontent.com/graphdml-uiuc-jlu/geom-gcn/master/"
+        nodes = download(
+            base + "new_data/film/out1_node_feature_label.txt", raw / name / "nodes.txt"
+        )
+        links = download(
+            base + "new_data/film/out1_graph_edges.txt", raw / name / "edges.txt"
+        )
+        split = download(
+            base + "splits/film_split_0.6_0.2_0.npz", raw / name / "split_0.npz"
+        )
+        records = [row.split("\t") for row in nodes.read_text().splitlines()[1:] if row]
+        features = [
+            (int(i), [int(v) for v in feature.split(",")], int(label))
+            for i, feature, label in records
+        ]
+        x = torch.zeros(len(features), 1 + max(max(v) for _, v, _ in features))
+        y = torch.empty(len(features), dtype=torch.long)
+        for i, columns, label in features:
+            x[i, columns] = 1
+            y[i] = label
+        edges = torch.tensor(
+            [
+                list(map(int, row.split("\t")))
+                for row in links.read_text().splitlines()[1:]
+                if row
+            ]
+        ).T
+        graph = dict(x=x, y=y, edges=canonical_edges(edges, len(x)))
+        with np.load(split) as masks:
+            for part in ["train", "val", "test"]:
+                graph[part] = torch.where(
+                    torch.from_numpy(masks[part + "_mask"]).bool()
+                )[0]
     elif name in ["texas", "wisconsin"]:
         base = (
             "https://raw.githubusercontent.com/graphdml-uiuc-jlu/geom-gcn/master/new_data/"
@@ -390,3 +462,39 @@ def load_protocol(name, task, data_root="data"):
     path.parent.mkdir(parents=True, exist_ok=True)
     torch.save(protocol, path)
     return protocol
+
+
+def load_proteins(data_root="data"):
+    """TU PROTEINS graphs with one-hot node labels, excluding node attributes."""
+    folder = Path(data_root) / "raw/proteins/PROTEINS"
+    suffixes = ("A", "graph_indicator", "graph_labels", "node_labels")
+    if not (folder / "PROTEINS_A.txt").exists():
+        archive = download(
+            "https://www.chrsmrrs.com/graphkerneldatasets/PROTEINS.zip",
+            folder.parent / "PROTEINS.zip",
+        )
+        folder.mkdir(parents=True, exist_ok=True)
+        with zipfile.ZipFile(archive) as source:
+            for suffix in suffixes:
+                filename = f"PROTEINS_{suffix}.txt"
+                (folder / filename).write_bytes(source.read("PROTEINS/" + filename))
+    arrays = {
+        suffix: torch.from_numpy(
+            np.loadtxt(folder / f"PROTEINS_{suffix}.txt", delimiter=",", dtype=np.int64)
+        )
+        for suffix in suffixes
+    }
+    indicator = arrays["graph_indicator"] - 1
+    edges = arrays["A"].T - 1
+    node_classes = arrays["node_labels"].unique(sorted=True)
+    x = (arrays["node_labels"][:, None] == node_classes).float()
+    _, labels = arrays["graph_labels"].unique(sorted=True, return_inverse=True)
+    counts = torch.bincount(indicator)
+    offsets = torch.cat((counts.new_zeros(1), counts.cumsum(0)))
+    membership = indicator[edges[0]]
+    graphs = []
+    for index, count in enumerate(counts.tolist()):
+        first, last = int(offsets[index]), int(offsets[index + 1])
+        local_edges = edges[:, membership == index] - first
+        graphs.append(dict(x=x[first:last], edges=canonical_edges(local_edges, count)))
+    return graphs, labels

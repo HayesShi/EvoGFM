@@ -12,6 +12,7 @@ from evogfm.features import (
     node_representations,
     attention,
     pair_context,
+    hard_negative_pool,
 )
 from evogfm.model import InverseLawGFM
 
@@ -94,3 +95,16 @@ def test_cached_query_batches_preserve_full_features_and_node_readout():
             )
             result.append(features)
         assert torch.allclose(torch.cat(result), expected, atol=1e-6)
+
+
+def test_hard_negatives_are_unique_training_nonedges_with_two_hop_paths():
+    edges = torch.tensor([[0, 1, 2, 3, 3], [1, 2, 3, 4, 5]])
+    pairs = hard_negative_pool(edges, 6, per_node=2)
+    keys = pairs[0] * 6 + pairs[1]
+    assert len(keys) > 0 and len(keys.unique()) == len(keys)
+    assert not set(keys.tolist()) & set((edges[0] * 6 + edges[1]).tolist())
+    a = adjacency(edges, 6)
+    expected = np.asarray(
+        (a @ a)[pairs[0].numpy().copy(), pairs[1].numpy().copy()]
+    ).ravel()
+    assert (expected > 0).all()

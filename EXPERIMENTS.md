@@ -1,4 +1,6 @@
-# Expanded experiments
+# Expanded experiments (V4)
+
+This report preserves the V4 runs. See [V5 experiments](EXPERIMENTS_V5.md) for the later larger-graph, sparse-edge, five-shot, hard-negative and graph-classification results.
 
 The multiscale readout improves all seven node-classification tests in this development run. The source checkpoint and inverse-attention construction stay fixed. The next unresolved issue is whether the inverse map itself provides a reliable advantage in node classification and future-domain transfer.
 

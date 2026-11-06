@@ -82,6 +82,69 @@ def multiscale_ridge(parts, values, y, train, val, metric="accuracy"):
     return best[1], dict(**best[2], candidates=records)
 
 
+def diffuse_labels(scores, y, train, transition, alpha, steps=20):
+    """Restart at model predictions and clamp only labeled training nodes."""
+    import numpy as np
+
+    prior = (8 * scores).softmax(1).numpy()
+    classes = y[train].unique(sorted=True)
+    target = (y[train, None] == classes[None, :]).numpy().astype(np.float32)
+    probabilities = prior.copy()
+    isolated = np.asarray(transition.sum(1)).ravel() == 0
+    for _ in range(steps):
+        probabilities = (1 - alpha) * prior + alpha * (transition @ probabilities)
+        probabilities[isolated] = prior[isolated]
+        probabilities[train.numpy()] = target
+    return torch.from_numpy(probabilities)
+
+
+def enhanced_ridge(parts, values, y, train, val, transition, metric="accuracy"):
+    """Multiscale ridge, a larger quadratic sketch and train-label diffusion.
+
+    A new component must improve validation by more than 0.1 percentage point;
+    otherwise the smaller selected readout is retained.
+    """
+    classes = y[train].unique(sorted=True)
+
+    def measure(scores):
+        if metric == "auc":
+            return 100 * float(roc_auc_score(y[val], scores[val, 1] - scores[val, 0]))
+        return 100 * float((classes[scores[val].argmax(1)] == y[val]).double().mean())
+
+    scores, info = multiscale_ridge(parts, values, y, train, val, metric)
+    best_value = measure(scores)
+    best_info = dict(variant=info["variant"], alpha=info["alpha"], diffusion=0.0)
+    records = [dict(**best_info, validation_score_percent=best_value)]
+    features = torch.cat(parts[:5] + [0.5 * values], dim=1)
+    x = F.normalize(features, dim=1)
+    generator = torch.Generator().manual_seed(42)
+    w = torch.randn(x.shape[1], 2048, generator=generator)
+    v = torch.randn(x.shape[1], 2048, generator=generator)
+    expanded = torch.cat((features, (x @ w) * (x @ v) / 2048**0.5), dim=1)
+    candidate, fit = ridge(expanded, y, train, val, metric=metric)
+    score_value = measure(candidate)
+    configuration = dict(variant="quadratic2048", alpha=fit["alpha"], diffusion=0.0)
+    records.append(dict(**configuration, validation_score_percent=score_value))
+    if score_value > best_value + 0.1:
+        scores, best_value, best_info = candidate, score_value, configuration
+    base = scores
+    base_info = best_info.copy()
+    for alpha in (0.5, 0.9):
+        candidate = diffuse_labels(base, y, train, transition, alpha)
+        score_value = measure(candidate)
+        configuration = dict(base_info, diffusion=alpha)
+        records.append(dict(**configuration, validation_score_percent=score_value))
+        if score_value > best_value + 0.1:
+            scores, best_value, best_info = candidate, score_value, configuration
+    return scores, dict(
+        **best_info,
+        validation_percent=100
+        * float((classes[scores[val].argmax(1)] == y[val]).double().mean()),
+        **({"validation_auc_percent": best_value} if metric == "auc" else {}),
+        candidates=records,
+    )
+
+
 def hits100(pos, neg):
     # Exact OGB evaluator convention: ties to the K-th negative are misses.
     if len(neg) < 100:

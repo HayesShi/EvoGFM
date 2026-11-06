@@ -14,9 +14,21 @@ if __name__ == "__main__":
     parser.add_argument("--lp", nargs="*", default=["cora", "citeseer"])
     parser.add_argument("--threads", type=int, default=4)
     parser.add_argument(
-        "--node-readout", choices=["current", "adaptive"], default="current"
+        "--node-readout", choices=["current", "adaptive", "enhanced"], default="current"
     )
     parser.add_argument(
         "--nc-metric", choices=["accuracy", "auc", "auto"], default="accuracy"
+    )
+    parser.add_argument(
+        "--shots",
+        type=int,
+        default=0,
+        help="NC training labels per class; 0 uses the official training set",
+    )
+    parser.add_argument(
+        "--edge-rate",
+        type=float,
+        default=1.0,
+        help="Fraction of NC graph edges observed",
     )
     evaluate(**vars(parser.parse_args()))

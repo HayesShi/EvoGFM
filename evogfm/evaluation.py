@@ -13,6 +13,8 @@ from .features import (
     task_features,
     pair_channels,
     node_representations,
+    label_transition,
+    hard_negative_pool,
 )
 from .readout import (
     ridge,
@@ -21,11 +23,14 @@ from .readout import (
     fit_residual,
     predict_residual,
     multiscale_ridge,
+    enhanced_ridge,
 )
 from .training import load_checkpoint
 
 
-def masked_link_examples(model, head, raw, x, full, observation_rate=0.7):
+def masked_link_examples(
+    model, head, raw, x, full, observation_rate=0.7, negative_mode="uniform"
+):
     """Fit 18 coefficients using masked training edges, never public queries."""
     n = len(raw)
     generator = torch.Generator().manual_seed(42)
@@ -40,6 +45,22 @@ def masked_link_examples(model, head, raw, x, full, observation_rate=0.7):
     fixed_held = global_order[:nheld]
     eligible = global_order[nheld:]
     negative_pool = sampled_negatives(n, full, 2 * full.shape[1], generator)
+    if negative_mode == "mixed":
+        hard = hard_negative_pool(full, n)
+        count = min(len(hard.T), len(negative_pool.T) // 2)
+        selected = torch.randperm(
+            len(hard.T), generator=torch.Generator().manual_seed(43)
+        )[:count]
+        uniform_selected = torch.randperm(
+            len(negative_pool.T), generator=torch.Generator().manual_seed(44)
+        )[: len(negative_pool.T) - count]
+        negative_pool = torch.cat(
+            (hard[:, selected], negative_pool[:, uniform_selected]), dim=1
+        )
+        keys = (negative_pool[0] * n + negative_pool[1]).unique(sorted=True)
+        negative_pool = torch.stack((keys // n, keys % n))
+    elif negative_mode != "uniform":
+        raise ValueError("negative_mode must be uniform or mixed")
     negative_order = torch.randperm(negative_pool.shape[1], generator=generator)
     negative_held = negative_pool[:, negative_order[:nheld]]
     negative_train = negative_pool[:, negative_order[nheld:]]
@@ -90,10 +111,12 @@ def masked_link_examples(model, head, raw, x, full, observation_rate=0.7):
     )
 
 
-def fit_link_readout(model, head, raw, x, full, observation_rate=0.7):
+def fit_link_readout(
+    model, head, raw, x, full, observation_rate=0.7, negative_mode="uniform"
+):
     """Fit 18 coefficients using masked training edges, never public queries."""
     (tf, to, ty), (hf, ho, hy), statistics = masked_link_examples(
-        model, head, raw, x, full, observation_rate
+        model, head, raw, x, full, observation_rate, negative_mode
     )
     candidates = []
     begin = time.perf_counter()
@@ -126,7 +149,11 @@ def evaluate(
     threads=4,
     node_readout="current",
     nc_metric="accuracy",
+    shots=0,
+    edge_rate=1.0,
 ):
+    if shots < 0 or not 0 < edge_rate <= 1:
+        raise ValueError("shots must be nonnegative and edge_rate must be in (0, 1]")
     seed_all(42)
     torch.set_num_threads(threads)
     model, head, ckpt = load_checkpoint(checkpoint)
@@ -141,22 +168,47 @@ def evaluate(
         raw, x = preprocess(graph)
         edges = graph["edges"]
         protocol = load_protocol(name, "nc", data_root)
+        train = protocol["train"]
+        if shots:
+            generator = torch.Generator().manual_seed(42)
+            selected = []
+            for label in graph["y"][train].unique():
+                ids = train[graph["y"][train] == label]
+                selected.append(
+                    ids[torch.randperm(len(ids), generator=generator)[:shots]]
+                )
+            train = torch.cat(selected)
+        if edge_rate < 1:
+            order = torch.randperm(
+                edges.shape[1], generator=torch.Generator().manual_seed(42)
+            )
+            edges = edges[:, order[: int(edge_rate * len(order))]]
         with torch.no_grad():
-            state = model.state(x, edges)
+            state = model.state(x, edges, edge_rate)
             metric = (
                 "auc"
                 if nc_metric == "auto" and len(graph["y"].unique()) == 2
                 else ("accuracy" if nc_metric == "auto" else nc_metric)
             )
             parts, values = node_representations(
-                model, state, raw, edges, hops=4 if node_readout == "adaptive" else 2
+                model, state, raw, edges, hops=2 if node_readout == "current" else 4
             )
-            if node_readout == "adaptive":
+            if node_readout == "enhanced":
+                scores, info = enhanced_ridge(
+                    parts,
+                    values,
+                    graph["y"],
+                    train,
+                    protocol["val"],
+                    label_transition(model, state, edges),
+                    metric=metric,
+                )
+            elif node_readout == "adaptive":
                 scores, info = multiscale_ridge(
                     parts,
                     values,
                     graph["y"],
-                    protocol["train"],
+                    train,
                     protocol["val"],
                     metric=metric,
                 )
@@ -164,11 +216,11 @@ def evaluate(
                 scores, info = ridge(
                     torch.cat(parts + [values], dim=1),
                     graph["y"],
-                    protocol["train"],
+                    train,
                     protocol["val"],
                     metric=metric,
                 )
-        classes = graph["y"][protocol["train"]].unique(sorted=True)
+        classes = graph["y"][train].unique(sorted=True)
         ids = protocol[split]
         value = 100 * float(
             (classes[scores[ids].argmax(1)] == graph["y"][ids]).float().mean()
@@ -179,6 +231,7 @@ def evaluate(
                 roc_auc_score(graph["y"][ids], scores[ids, 1] - scores[ids, 0])
             )
         row["selection_metric"] = metric
+        row.update(shots=shots, train_labels=len(train), edge_rate=edge_rate)
         rows.append(row)
         print(row, flush=True)
     for name in tqdm(lp, desc="link prediction"):

@@ -22,6 +22,8 @@ if __name__ == "__main__":
             "minesweeper",
             "tolokers",
             "questions",
+            "actor",
+            "ogbn-arxiv",
         ]:
             load_protocol(name, "nc", args.data_root)
         if name in ["cora", "citeseer"]:

@@ -51,6 +51,23 @@ def pair_context(x, edges):
     return a, degree, raw, p1, p2
 
 
+def hard_negative_pool(edges, n, per_node=32):
+    """Training-graph nonedges with large resource-allocation scores."""
+    a = adjacency(edges, n).tocsr()
+    degree = np.asarray(a.sum(1)).ravel()
+    weighted = a.multiply(1 / np.maximum(1, degree)[None, :]).tocsr()
+    pairs = []
+    for node in range(n):
+        row = (weighted[node] @ a).tocsr()
+        valid = (row.indices > node) & ~np.isin(row.indices, a[node].indices)
+        candidates, scores = row.indices[valid], row.data[valid]
+        order = np.lexsort((candidates, -scores))[:per_node]
+        pairs.extend((node, int(j)) for j in candidates[order])
+    return (
+        torch.tensor(pairs, dtype=torch.long).T.contiguous() if pairs else edges[:, :0]
+    )
+
+
 def pair_channels(x, edges, pairs, batch_size=256, prepared=None):
     """Train-visible topology and label-free content, never query labels."""
     a, degree, raw, p1, p2 = pair_context(x, edges) if prepared is None else prepared
@@ -107,6 +124,16 @@ def node_representations(model, state, raw, edges, hops=4, uniform=False):
         parts.append(F.normalize(value, dim=1))
     h = F.normalize(model.embed_graph(state, visible), dim=1)
     return parts, h
+
+
+def label_transition(model, state, edges):
+    """The same inverse-programmed row-stochastic affinity used by propagation."""
+    visible = contexts(edges, len(state.z), edges[:, :0])["visible"]
+    weight = attention(model, state, visible)
+    return sp.csr_matrix(
+        (weight.detach().numpy(), tuple(visible.numpy())),
+        shape=(len(state.z), len(state.z)),
+    )
 
 
 def preprocess(data):
