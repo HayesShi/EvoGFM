@@ -244,7 +244,12 @@ def load_graph(name, data_root="data"):
     data_root = Path(data_root)
     cache = data_root / "graphs" / f"{name}.pt"
     if cache.exists():
-        return torch.load(cache, map_location="cpu", weights_only=False)
+        graph = torch.load(cache, map_location="cpu", weights_only=False)
+        # Older Wisconsin caches predate public NC mask support.
+        if name != "wisconsin" or all(
+            part in graph for part in ("train", "val", "test")
+        ):
+            return graph
     raw = data_root / "raw"
     if name in ["cora", "citeseer", "pubmed"]:
         graph = planetoid(name, raw)
@@ -326,7 +331,7 @@ def load_graph(name, data_root="data"):
                 graph[part] = torch.where(
                     torch.from_numpy(masks[part + "_mask"]).bool()
                 )[0]
-    elif name in ["texas", "wisconsin"]:
+    elif name in ["texas", "wisconsin", "cornell", "chameleon", "squirrel"]:
         base = (
             "https://raw.githubusercontent.com/graphdml-uiuc-jlu/geom-gcn/master/new_data/"
             + name
@@ -352,8 +357,23 @@ def load_graph(name, data_root="data"):
             y=torch.tensor([nodes[i][1] for i in ids]),
             edges=canonical_edges(edges, len(ids)),
         )
-    elif name in ("photo", "computers"):
-        filename = f"amazon_electronics_{name}.npz"
+        if name != "texas":
+            split = download(
+                "https://raw.githubusercontent.com/graphdml-uiuc-jlu/geom-gcn/master/"
+                f"splits/{name}_split_0.6_0.2_0.npz",
+                raw / name / "split_0.npz",
+            )
+            with np.load(split) as masks:
+                for part in ("train", "val", "test"):
+                    graph[part] = torch.where(
+                        torch.from_numpy(masks[part + "_mask"]).bool()
+                    )[0]
+    elif name in ("photo", "computers", "coauthor-cs"):
+        filename = (
+            "ms_academic_cs.npz"
+            if name == "coauthor-cs"
+            else f"amazon_electronics_{name}.npz"
+        )
         path = download(
             "https://raw.githubusercontent.com/shchur/gnn-benchmark/master/data/npz/"
             + filename,
@@ -375,7 +395,7 @@ def load_graph(name, data_root="data"):
                     torch.from_numpy(np.stack(a.nonzero())), x.shape[0]
                 ),
             )
-        if name == "computers":
+        if name in ("computers", "coauthor-cs"):
             from sklearn.model_selection import train_test_split
 
             # GraphAny's semi-supervised split: 20*C train nodes in total,
@@ -509,8 +529,8 @@ def load_proteins(data_root="data"):
 
 def load_tu(name, data_root="data"):
     """TU graph classification with one-hot node labels and no node attributes."""
-    if name not in ("PROTEINS", "NCI1"):
-        raise ValueError("Supported TU datasets: PROTEINS and NCI1")
+    if name not in ("PROTEINS", "NCI1", "MUTAG", "DD"):
+        raise ValueError("Supported TU datasets: PROTEINS, NCI1, MUTAG and DD")
     folder = Path(data_root) / "raw" / name.lower() / name
     suffixes = ("A", "graph_indicator", "graph_labels", "node_labels")
     if not (folder / f"{name}_A.txt").exists():

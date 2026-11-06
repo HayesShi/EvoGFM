@@ -113,6 +113,18 @@ python continual.py --stream cora citeseer actor amazon-ratings --future mineswe
 
 For NC/LP, inspect validation results before adding `--split test`. Five-shot means five training nodes per class **plus official validation labels for selection**. The joint setting also keeps 20% of graph edges. Mixed link calibration uses training-graph hard nonedges; official HeaRT candidates are unchanged. PROTEINS/NCI1 use one-hot node labels without continuous node attributes. Balanced pooling fits scaling inside each training fold and selects the encoder-block weight in inner CV. Local official raw caches are reused when available.
 
+The `optimization-v7` branch adds dataset support for the next expansion; measured results above remain V6. New NC targets are Wisconsin, Cornell, Chameleon, Squirrel and Coauthor-CS. Geom-GCN targets use official split 0; Coauthor-CS uses GraphAny's seed-42 stratified split with 300 total training nodes. Chameleon/Squirrel use the original Geom-GCN graphs. MUTAG and DD extend whole-graph classification with the same nested SVM evaluation. These new experiments have not finished yet.
+
+```bash
+python prepare.py --datasets wisconsin cornell chameleon squirrel coauthor-cs
+python evaluate.py --nc wisconsin cornell chameleon squirrel coauthor-cs --lp --node-readout advanced --output runs/v7_nodes
+python evaluate.py --nc chameleon squirrel coauthor-cs --lp --node-readout advanced --shots 5 --edge-rate 0.2 --output runs/v7_joint
+python classify_graphs.py --dataset MUTAG --balanced-readout --output runs/v7_mutag
+python classify_graphs.py --dataset DD --balanced-readout --output runs/v7_dd
+```
+
+Cora is the next official HeaRT target: install its official files under `data/heart/cora/`, then run `python heart.py --dataset cora --negative-mode mixed --output runs/v7_heart_cora`. Use the same frozen source checkpoint for all expansion runs; validation precedes `--split test`. See the V6 commands for other checkpoint locations.
+
 **Continual calibration.** Each task updates 32 inverse coefficients; eight bias coefficients remain frozen. Its 40 × 40 curvature metric starts with source task information and accumulates final-logit GGN estimates. The runner compares `static`, `cumulative` and `reset` controls. NC uses official training labels; LP uses a separate native masked-edge split. Future-domain labels are used only for reporting. The same two task states serve every graph; no per-domain adapter is stored.
 
 Continual reports use validation scores. LP continual AUC is a separate experiment from the public NCN Hits@100 protocol. A future score gain is empirical evidence, and can be negative; the runner reports the full trajectory.

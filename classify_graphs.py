@@ -204,6 +204,8 @@ if __name__ == "__main__":
     parser.add_argument("--data-root", default="data")
     parser.add_argument("--output", default="runs/proteins")
     parser.add_argument("--threads", type=int, default=4)
-    parser.add_argument("--dataset", choices=["PROTEINS", "NCI1"], default="PROTEINS")
+    parser.add_argument(
+        "--dataset", choices=["PROTEINS", "NCI1", "MUTAG", "DD"], default="PROTEINS"
+    )
     parser.add_argument("--balanced-readout", action="store_true")
     evaluate(parser.parse_args())
