@@ -35,7 +35,7 @@ class LinkScorer:
         self.state = model.state(x, edges, observation_rate)
         self.parts, self.h = node_representations(model, self.state, raw, edges, hops=2)
         self.a, self.degree, self.content0, self.content1, self.content2 = pair_context(
-            raw, edges
+            raw, edges, normalized=self.parts[0]
         )
         self.a.sort_indices()
         row, col = self.a.nonzero()
@@ -188,7 +188,10 @@ def fit_large_links(model, head, raw, x, edges):
         ), torch.cat((torch.ones(len(val_ids)), torch.zeros(256)))
         scorer = LinkScorer(model, head, raw, x, support, 0.8)
         with torch.no_grad():
-            tf, hf = scorer.features(train_pairs), scorer.features(held_pairs)
+            tf, hf = [
+                torch.cat([scorer.features(batch) for batch in pairs.split(256, dim=1)])
+                for pairs in (train_pairs, held_pairs)
+            ]
             train.append((tf, head(tf).squeeze(1), train_y))
             held.append((hf, head(hf).squeeze(1), held_y))
         train_ids.update((train_pairs[0] * len(raw) + train_pairs[1]).tolist())

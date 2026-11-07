@@ -48,19 +48,24 @@ def adjacency(edges, n):
 
 
 def propagate(x, edges):
-    matrix = adjacency(edges, len(x)) + sp.eye(len(x))
-    inv = np.asarray(matrix.sum(1)).ravel() ** -0.5
-    matrix = sp.diags(inv) @ matrix @ sp.diags(inv)
+    matrix = normalized_propagation(adjacency(edges, len(x)))
     return torch.from_numpy(matrix @ x.numpy()).float()
 
 
-def pair_context(x, edges):
+def normalized_propagation(matrix):
+    matrix = matrix + sp.eye(matrix.shape[0])
+    inv = np.asarray(matrix.sum(1)).ravel() ** -0.5
+    return sp.diags(inv) @ matrix @ sp.diags(inv)
+
+
+def pair_context(x, edges, normalized=None):
     """Cache query-independent content for large candidate pools."""
     a = adjacency(edges, len(x)).tocsr()
     degree = np.asarray(a.sum(1)).ravel()
-    raw = F.normalize(x, dim=1)
-    p1 = F.normalize(propagate(x, edges), dim=1)
-    p2 = F.normalize(propagate(p1, edges), dim=1)
+    raw = F.normalize(x, dim=1) if normalized is None else normalized
+    matrix = normalized_propagation(a)
+    p1 = F.normalize(torch.from_numpy(matrix @ x.numpy()).float(), dim=1)
+    p2 = F.normalize(torch.from_numpy(matrix @ p1.numpy()).float(), dim=1)
     return a, degree, raw, p1, p2
 
 

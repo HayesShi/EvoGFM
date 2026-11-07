@@ -38,6 +38,26 @@ def test_three_hop_repeated_endpoints():
         )
 
 
+def test_shared_link_content_matches_dense_propagation():
+    import torch.nn.functional as functional
+    from evogfm.data import canonical_edges
+    from evogfm.features import adjacency, pair_context
+
+    torch.manual_seed(42)
+    x = torch.randn(47, 11)
+    edges = canonical_edges(torch.randint(47, (2, 199)), 47)
+    normalized = functional.normalize(x, dim=1)
+    _, _, raw, p1, p2 = pair_context(x, edges, normalized=normalized)
+    matrix = torch.from_numpy(adjacency(edges, 47).toarray()) + torch.eye(47)
+    inv = matrix.sum(1).rsqrt()
+    matrix = inv[:, None] * matrix * inv[None, :]
+    expected1 = functional.normalize((matrix @ x.double()).float(), dim=1)
+    expected2 = functional.normalize((matrix @ expected1.double()).float(), dim=1)
+    assert raw.data_ptr() == normalized.data_ptr()
+    torch.testing.assert_close(p1, expected1)
+    torch.testing.assert_close(p2, expected2)
+
+
 def test_chunked_graph_attention():
     torch.manual_seed(42)
     layer = ProgrammedLayer(16, 8, 2, 4, frame_aligned=True).eval()

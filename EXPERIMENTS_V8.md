@@ -1,6 +1,6 @@
 # EvoGFM V8：补齐原表基准
 
-更新：2026-11-07T17:26:36。完成数量：GraphAny 29/31；NCN 4/7；HeaRT 小图 3/3、大图 1/4；GraphCL 8/8。
+更新：2026-11-07T17:50:26。完成数量：GraphAny 31/31；NCN 4/7；HeaRT 小图 3/3、大图 1/4；GraphCL 8/8。
 
 这轮补跑缺失数据集，沿用冻结的完整 EvoGFM、既定读出候选及 seed 42。Pubmed、Photo、Texas 分别使用排除对应目标图的两源模型，均训练完整 60 轮、240 次更新，按源验证目标选择 checkpoint。Texas 对应 GraphAny 的 texas_4_classes 版本；单节点稀有类别不进入其发布的训练、验证或测试掩码。
 
@@ -14,8 +14,10 @@
 | deezer | 55.7963 | runs/reference/best.pt |
 | full-cora | 59.9652 | runs/reference/best.pt |
 | lastfm-asia | 82.1311 | runs/reference/best.pt |
+| ogbn-products | 74.1290 | runs/reference/best.pt |
 | photo | 92.3364 | runs/loso_photo/best.pt |
 | pubmed | 76.8000 | runs/loso_pubmed/best.pt |
+| reddit | 91.2805 | runs/reference/best.pt |
 | air-brazil | 42.3077 | runs/reference/best.pt |
 | air-eu | 48.1250 | runs/reference/best.pt |
 | air-us | 53.5135 | runs/reference/best.pt |

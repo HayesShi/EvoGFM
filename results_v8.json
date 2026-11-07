@@ -1,15 +1,12 @@
 {
   "coverage": {
-    "updated": "2026-11-07T17:26:36",
-    "node": "29/31",
+    "updated": "2026-11-07T17:50:26",
+    "node": "31/31",
     "public_lp": "4/7",
     "heart_small": "3/3",
     "heart_large": "1/4",
     "graph": "8/8",
-    "missing_nodes": [
-      "Reddit",
-      "OGBN-Products"
-    ]
+    "missing_nodes": []
   },
   "nodes": [
     {
@@ -458,6 +455,80 @@
       "source": "runs\\v8\\nc_lastfm-asia\\test_none.json"
     },
     {
+      "dataset": "ogbn-products",
+      "readout": "advanced",
+      "train_labels": 196615,
+      "observed_edges": 61859012,
+      "variant": "quadratic2048",
+      "alpha": 0.1,
+      "diffusion": 0.9,
+      "validation_percent": 89.8303791674084,
+      "candidates": [
+        {
+          "variant": "quadratic",
+          "alpha": 0.01,
+          "diffusion": 0.0,
+          "validation_score_percent": 85.1740711542863
+        },
+        {
+          "variant": "quadratic2048",
+          "alpha": 0.1,
+          "diffusion": 0.0,
+          "validation_score_percent": 87.56961574650968
+        },
+        {
+          "variant": "rbf1",
+          "alpha": 0.01,
+          "diffusion": 0.0,
+          "validation_score_percent": 84.8155023777433
+        },
+        {
+          "variant": "rbf4",
+          "alpha": 0.01,
+          "diffusion": 0.0,
+          "validation_score_percent": 84.01444447270046
+        },
+        {
+          "variant": "quadratic2048",
+          "alpha": 0.1,
+          "diffusion": 0.5,
+          "validation_score_percent": 88.97846044299774
+        },
+        {
+          "variant": "quadratic2048",
+          "alpha": 0.1,
+          "diffusion": 0.9,
+          "validation_score_percent": 89.8303791674084
+        },
+        {
+          "variant": "quadratic2048",
+          "alpha": 0.1,
+          "diffusion": 0.0,
+          "correction": true,
+          "validation_score_percent": 88.8131627800524
+        },
+        {
+          "variant": "quadratic2048",
+          "alpha": 0.1,
+          "diffusion": 0.5,
+          "correction": true,
+          "validation_score_percent": 89.5226712102332
+        },
+        {
+          "variant": "quadratic2048",
+          "alpha": 0.1,
+          "diffusion": 0.9,
+          "correction": true,
+          "validation_score_percent": 89.88886910968135
+        }
+      ],
+      "split": "test",
+      "accuracy_percent": 74.12899136543274,
+      "seconds": 897.0934830999904,
+      "checkpoint": "runs/reference/best.pt",
+      "source": "runs\\v8\\nc_ogbn-products\\test_none.json"
+    },
+    {
       "dataset": "photo",
       "readout": "advanced",
       "train_labels": 160,
@@ -604,6 +675,80 @@
       "seconds": 11.063398099999176,
       "checkpoint": "runs/loso_pubmed/best.pt",
       "source": "runs\\v8\\nc_pubmed\\test_none.json"
+    },
+    {
+      "dataset": "reddit",
+      "readout": "advanced",
+      "train_labels": 153431,
+      "observed_edges": 57307946,
+      "variant": "quadratic2048",
+      "alpha": 0.01,
+      "diffusion": 0.0,
+      "validation_percent": 91.16696739540934,
+      "candidates": [
+        {
+          "variant": "quadratic",
+          "alpha": 0.1,
+          "diffusion": 0.0,
+          "validation_score_percent": 90.19344551214805
+        },
+        {
+          "variant": "quadratic2048",
+          "alpha": 0.01,
+          "diffusion": 0.0,
+          "validation_score_percent": 91.16696739540934
+        },
+        {
+          "variant": "rbf1",
+          "alpha": 0.01,
+          "diffusion": 0.0,
+          "validation_score_percent": 90.08434392178255
+        },
+        {
+          "variant": "rbf4",
+          "alpha": 0.01,
+          "diffusion": 0.0,
+          "validation_score_percent": 89.92908396626244
+        },
+        {
+          "variant": "quadratic2048",
+          "alpha": 0.01,
+          "diffusion": 0.5,
+          "validation_score_percent": 85.85875540262683
+        },
+        {
+          "variant": "quadratic2048",
+          "alpha": 0.01,
+          "diffusion": 0.9,
+          "validation_score_percent": 82.03600352482061
+        },
+        {
+          "variant": "quadratic2048",
+          "alpha": 0.01,
+          "diffusion": 0.0,
+          "correction": true,
+          "validation_score_percent": 86.97075238135203
+        },
+        {
+          "variant": "quadratic2048",
+          "alpha": 0.01,
+          "diffusion": 0.5,
+          "correction": true,
+          "validation_score_percent": 84.18446561201796
+        },
+        {
+          "variant": "quadratic2048",
+          "alpha": 0.01,
+          "diffusion": 0.9,
+          "correction": true,
+          "validation_score_percent": 81.49469178800722
+        }
+      ],
+      "split": "test",
+      "accuracy_percent": 91.2805438041687,
+      "seconds": 792.4907681999903,
+      "checkpoint": "runs/reference/best.pt",
+      "source": "runs\\v8\\nc_reddit\\test_none.json"
     },
     {
       "dataset": "air-brazil",
