@@ -140,7 +140,19 @@ class LinkScorer:
     def score(self, pairs, fitted, batch_size=512, group_queries=True):
         # Official order is restored before ranking; every query is retained.
         order = None
-        if group_queries and self.dense is None and pairs.shape[1] > batch_size:
+        if (
+            group_queries
+            and self.dense is None
+            and pairs.shape[1] > min(batch_size, 512)
+        ):
+            # All channels are symmetric on this undirected inference graph.
+            # Put the repeated endpoint first for one-sided negative candidates.
+            _, inverse, counts = torch.unique(
+                pairs, return_inverse=True, return_counts=True
+            )
+            frequency = counts[inverse]
+            swap = frequency[1] > frequency[0]
+            pairs = torch.where(swap[None], pairs.flip(0), pairs)
             order = pairs[0].argsort(stable=True)
             pairs = pairs[:, order]
         output = []

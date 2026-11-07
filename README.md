@@ -148,7 +148,7 @@ python train.py --sources photo texas --epochs 60 --output runs/loso_pubmed
 python link_benchmark.py --checkpoint runs/reference/best.pt --dataset ogbl-collab --output runs/v8/ogbl-collab
 # Also accepts ogbl-ddi, ogbl-ppa and ogbl-citation2.
 python link_benchmark.py --checkpoint runs/reference/best.pt --dataset ogbl-citation2 --batch-size 8192 --output runs/v8/ogbl-citation2
-python link_benchmark.py --checkpoint runs/reference/best.pt --dataset ogbl-collab --heart-archive /path/to/HeaRT.tar.gz --calibration-cache runs/v8/ogbl-collab/calibration.pt --output runs/v8/heart_ogbl-collab
+python link_benchmark.py --checkpoint runs/reference/best.pt --dataset ogbl-collab --batch-size 2048 --heart-archive /path/to/HeaRT.tar.gz --calibration-cache runs/v8/ogbl-collab/calibration.pt --output runs/v8/heart_ogbl-collab
 
 # Additional graph tasks: COLLAB, REDDIT-BINARY, REDDIT-MULTI-5K.
 python classify_graphs.py --checkpoint runs/reference/best.pt --dataset COLLAB --balanced-readout --workers 4 --resume --output runs/v8/graph_collab

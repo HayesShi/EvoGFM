@@ -174,6 +174,12 @@ def test_prepared_link_channels_and_head_streaming():
             rtol=2e-5,
             atol=2e-6,
         )
+        torch.testing.assert_close(
+            scorer.score(pairs.flip(0), fitted, batch_size=17, group_queries=False),
+            scorer.score(pairs, fitted, batch_size=5, group_queries=False),
+            rtol=2e-5,
+            atol=2e-6,
+        )
         layer = model.layers[0]
         left, s, right, _ = model.attention_program(state)
         h = model.up(state.z)
