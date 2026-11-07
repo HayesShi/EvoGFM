@@ -8,6 +8,17 @@ from torch import nn
 import torch.nn.functional as F
 
 
+def symmetric_eigh(matrix):
+    """Retry the same symmetric system in float64 if float32 cannot converge."""
+    try:
+        values, vectors = torch.linalg.eigh(matrix.float())
+        if torch.isfinite(values).all() and torch.isfinite(vectors).all():
+            return values, vectors
+    except torch.linalg.LinAlgError:
+        pass
+    return torch.linalg.eigh(matrix.double())
+
+
 @dataclass
 class GraphState:
     z: torch.Tensor
@@ -364,7 +375,7 @@ class InverseLawGFM(nn.Module):
         if self.whiten:
             with torch.no_grad():
                 cov = z.detach().T @ z.detach() / max(1, len(z))
-                eig, u = torch.linalg.eigh(cov.float())
+                eig, u = symmetric_eigh(cov)
                 floor = eig.max().clamp_min(1e-6) * self.whiten_floor
                 w = (u * eig.clamp_min(floor).rsqrt()[None, :]) @ u.T
             z = z @ w.to(z)
@@ -392,7 +403,7 @@ class InverseLawGFM(nn.Module):
                 v = vh.T
             else:
                 c = (c + c.T) / 2
-                g, u = torch.linalg.eigh(c.float())
+                g, u = symmetric_eigh(c)
                 v = u
             # Complete spectrum remains available to the coupled inverse.
             radius = z.norm(dim=-1) / math.sqrt(self.d)

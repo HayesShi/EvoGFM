@@ -1,5 +1,5 @@
 {
-  "scope": "Best observed complete EvoGFM releases V4-V6; development summary, not a single configuration.",
+  "scope": "Best observed complete EvoGFM releases V4-V7; development summary, not a single configuration.",
   "node_accuracy": {
     "cora": {
       "value": 79.60000038146973,
@@ -55,6 +55,36 @@
       "source": "runs/advanced_v6/test_none.json",
       "metric": "accuracy_percent"
     },
+    "wisconsin": {
+      "value": 76.47058963775635,
+      "version": "V7",
+      "source": "runs/expanded_v7/test_none.json",
+      "metric": "accuracy_percent"
+    },
+    "cornell": {
+      "value": 81.08108043670654,
+      "version": "V7",
+      "source": "runs/expanded_v7/test_none.json",
+      "metric": "accuracy_percent"
+    },
+    "chameleon": {
+      "value": 69.73684430122375,
+      "version": "V7",
+      "source": "runs/expanded_v7/test_none.json",
+      "metric": "accuracy_percent"
+    },
+    "squirrel": {
+      "value": 51.87320113182068,
+      "version": "V7",
+      "source": "runs/expanded_v7/test_none.json",
+      "metric": "accuracy_percent"
+    },
+    "coauthor-cs": {
+      "value": 91.47166609764099,
+      "version": "V7",
+      "source": "runs/expanded_v7/test_none.json",
+      "metric": "accuracy_percent"
+    },
     "computers": {
       "value": 84.7254991531372,
       "version": "V6",
@@ -89,6 +119,267 @@
     }
   },
   "graph_classification": {
+    "MUTAG": {
+      "variant": "evogfm",
+      "accuracy_percent": 87.71929824561406,
+      "fold_std_percent": 5.963765512974017,
+      "folds": [
+        {
+          "fold": 1,
+          "accuracy_percent": 89.47368421052632,
+          "parameters": {
+            "graphscale__weight": 1.0,
+            "svc__C": 10.0
+          }
+        },
+        {
+          "fold": 2,
+          "accuracy_percent": 78.94736842105263,
+          "parameters": {
+            "graphscale__weight": 1.0,
+            "svc__C": 1000.0
+          }
+        },
+        {
+          "fold": 3,
+          "accuracy_percent": 89.47368421052632,
+          "parameters": {
+            "graphscale__weight": 1.0,
+            "svc__C": 10.0
+          }
+        },
+        {
+          "fold": 4,
+          "accuracy_percent": 84.21052631578947,
+          "parameters": {
+            "graphscale__weight": 1.0,
+            "svc__C": 10.0
+          }
+        },
+        {
+          "fold": 5,
+          "accuracy_percent": 89.47368421052632,
+          "parameters": {
+            "graphscale__weight": 0.1,
+            "svc__C": 1.0
+          }
+        },
+        {
+          "fold": 6,
+          "accuracy_percent": 89.47368421052632,
+          "parameters": {
+            "graphscale__weight": 0.1,
+            "svc__C": 1000.0
+          }
+        },
+        {
+          "fold": 7,
+          "accuracy_percent": 100.0,
+          "parameters": {
+            "graphscale__weight": 1.0,
+            "svc__C": 10.0
+          }
+        },
+        {
+          "fold": 8,
+          "accuracy_percent": 89.47368421052632,
+          "parameters": {
+            "graphscale__weight": 0.1,
+            "svc__C": 1000.0
+          }
+        },
+        {
+          "fold": 9,
+          "accuracy_percent": 88.88888888888889,
+          "parameters": {
+            "graphscale__weight": 0.1,
+            "svc__C": 100.0
+          }
+        },
+        {
+          "fold": 10,
+          "accuracy_percent": 77.77777777777779,
+          "parameters": {
+            "graphscale__weight": 0.1,
+            "svc__C": 1000.0
+          }
+        }
+      ]
+    },
+    "DD": {
+      "variant": "evogfm",
+      "accuracy_percent": 77.58872953788209,
+      "fold_std_percent": 3.0469365830819255,
+      "folds": [
+        {
+          "fold": 1,
+          "accuracy_percent": 75.42372881355932,
+          "parameters": {
+            "graphscale__weight": 0.1,
+            "svc__C": 1.0
+          }
+        },
+        {
+          "fold": 2,
+          "accuracy_percent": 79.66101694915254,
+          "parameters": {
+            "graphscale__weight": 0.1,
+            "svc__C": 1.0
+          }
+        },
+        {
+          "fold": 3,
+          "accuracy_percent": 81.35593220338984,
+          "parameters": {
+            "graphscale__weight": 0.1,
+            "svc__C": 10.0
+          }
+        },
+        {
+          "fold": 4,
+          "accuracy_percent": 72.03389830508475,
+          "parameters": {
+            "graphscale__weight": 0.1,
+            "svc__C": 10.0
+          }
+        },
+        {
+          "fold": 5,
+          "accuracy_percent": 77.11864406779661,
+          "parameters": {
+            "graphscale__weight": 0.1,
+            "svc__C": 10.0
+          }
+        },
+        {
+          "fold": 6,
+          "accuracy_percent": 80.50847457627118,
+          "parameters": {
+            "graphscale__weight": 0.1,
+            "svc__C": 1.0
+          }
+        },
+        {
+          "fold": 7,
+          "accuracy_percent": 77.96610169491525,
+          "parameters": {
+            "graphscale__weight": 0.1,
+            "svc__C": 10.0
+          }
+        },
+        {
+          "fold": 8,
+          "accuracy_percent": 77.11864406779661,
+          "parameters": {
+            "graphscale__weight": 1.0,
+            "svc__C": 1.0
+          }
+        },
+        {
+          "fold": 9,
+          "accuracy_percent": 73.50427350427351,
+          "parameters": {
+            "graphscale__weight": 0.1,
+            "svc__C": 1.0
+          }
+        },
+        {
+          "fold": 10,
+          "accuracy_percent": 81.19658119658119,
+          "parameters": {
+            "graphscale__weight": 0.1,
+            "svc__C": 10.0
+          }
+        }
+      ]
+    },
+    "IMDB-BINARY": {
+      "variant": "evogfm",
+      "accuracy_percent": 70.5,
+      "fold_std_percent": 4.984977432245807,
+      "folds": [
+        {
+          "fold": 1,
+          "accuracy_percent": 60.0,
+          "parameters": {
+            "graphscale__weight": 10.0,
+            "svc__C": 10.0
+          }
+        },
+        {
+          "fold": 2,
+          "accuracy_percent": 72.0,
+          "parameters": {
+            "graphscale__weight": 1.0,
+            "svc__C": 1.0
+          }
+        },
+        {
+          "fold": 3,
+          "accuracy_percent": 67.0,
+          "parameters": {
+            "graphscale__weight": 1.0,
+            "svc__C": 10.0
+          }
+        },
+        {
+          "fold": 4,
+          "accuracy_percent": 74.0,
+          "parameters": {
+            "graphscale__weight": 10.0,
+            "svc__C": 1.0
+          }
+        },
+        {
+          "fold": 5,
+          "accuracy_percent": 68.0,
+          "parameters": {
+            "graphscale__weight": 0.1,
+            "svc__C": 1000.0
+          }
+        },
+        {
+          "fold": 6,
+          "accuracy_percent": 71.0,
+          "parameters": {
+            "graphscale__weight": 10.0,
+            "svc__C": 100.0
+          }
+        },
+        {
+          "fold": 7,
+          "accuracy_percent": 66.0,
+          "parameters": {
+            "graphscale__weight": 1.0,
+            "svc__C": 1.0
+          }
+        },
+        {
+          "fold": 8,
+          "accuracy_percent": 77.0,
+          "parameters": {
+            "graphscale__weight": 1.0,
+            "svc__C": 1.0
+          }
+        },
+        {
+          "fold": 9,
+          "accuracy_percent": 76.0,
+          "parameters": {
+            "graphscale__weight": 10.0,
+            "svc__C": 1.0
+          }
+        },
+        {
+          "fold": 10,
+          "accuracy_percent": 74.0,
+          "parameters": {
+            "graphscale__weight": 0.1,
+            "svc__C": 1.0
+          }
+        }
+      ]
+    },
     "PROTEINS": {
       "variant": "evogfm",
       "accuracy_percent": 77.17503217503217,
@@ -345,6 +636,57 @@
       "hits10_percent": 51.868131868131876,
       "hits20_percent": 62.637362637362635,
       "hits100_percent": 86.37362637362638
+    },
+    "cora_v7": {
+      "dataset": "cora",
+      "protocol": "official HeaRT",
+      "split": "test",
+      "ablation": "none",
+      "seed": 42,
+      "negative_mode": "uniform",
+      "source_epoch": 21,
+      "positive_pairs": 527,
+      "negatives_per_positive": 500,
+      "mrr_percent": 16.969277020188443,
+      "hits10_percent": 35.483870967741936,
+      "hits20_percent": 48.38709677419355,
+      "hits100_percent": 82.73244781783681
+    },
+    "cora_v7_selection": {
+      "selection": "Highest official validation MRR; no test results observed",
+      "selected_mode": "uniform",
+      "candidates": [
+        {
+          "dataset": "cora",
+          "protocol": "official HeaRT",
+          "split": "valid",
+          "ablation": "none",
+          "seed": 42,
+          "negative_mode": "uniform",
+          "source_epoch": 21,
+          "positive_pairs": 263,
+          "negatives_per_positive": 500,
+          "mrr_percent": 16.323278800604562,
+          "hits10_percent": 36.88212927756654,
+          "hits20_percent": 48.669201520912544,
+          "hits100_percent": 79.46768060836501
+        },
+        {
+          "dataset": "cora",
+          "protocol": "official HeaRT",
+          "split": "valid",
+          "ablation": "none",
+          "seed": 42,
+          "negative_mode": "mixed",
+          "source_epoch": 21,
+          "positive_pairs": 263,
+          "negatives_per_positive": 500,
+          "mrr_percent": 14.605930906199022,
+          "hits10_percent": 30.418250950570343,
+          "hits20_percent": 43.346007604562736,
+          "hits100_percent": 79.46768060836501
+        }
+      ]
     }
   }
 }

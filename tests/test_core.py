@@ -1,7 +1,30 @@
 import torch
+import pytest
 
-from evogfm.model import InverseLawGFM
+from evogfm.model import InverseLawGFM, symmetric_eigh
 from evogfm.online import OnlineNewton, TaskCoefficientBank
+
+
+@pytest.mark.parametrize("failure", ["exception", "nonfinite"])
+def test_symmetric_solver_retries_same_matrix_in_double(monkeypatch, failure):
+    original = torch.linalg.eigh
+    seen = []
+
+    def converge_in_double(matrix):
+        seen.append(matrix.dtype)
+        if matrix.dtype == torch.float32:
+            if failure == "exception":
+                raise torch.linalg.LinAlgError("float32 convergence failure")
+            return matrix.new_full((len(matrix),), torch.nan), matrix.clone()
+        return original(matrix)
+
+    monkeypatch.setattr(torch.linalg, "eigh", converge_in_double)
+    matrix = torch.ones(6, 6)
+    values, vectors = symmetric_eigh(matrix)
+    assert seen == [torch.float32, torch.float64]
+    torch.testing.assert_close(
+        (vectors * values) @ vectors.T, matrix.double(), rtol=1e-10, atol=1e-10
+    )
 
 
 def test_resolved_inverse_is_affine_and_aligned_dense_equals_graph():

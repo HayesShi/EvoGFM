@@ -528,11 +528,13 @@ def load_proteins(data_root="data"):
 
 
 def load_tu(name, data_root="data"):
-    """TU graph classification with one-hot node labels and no node attributes."""
-    if name not in ("PROTEINS", "NCI1", "MUTAG", "DD"):
-        raise ValueError("Supported TU datasets: PROTEINS, NCI1, MUTAG and DD")
+    """TU graphs: node-label indicators, or capped degree indicators for IMDB."""
+    if name not in ("PROTEINS", "NCI1", "MUTAG", "DD", "IMDB-BINARY"):
+        raise ValueError("Unsupported TU dataset")
     folder = Path(data_root) / "raw" / name.lower() / name
-    suffixes = ("A", "graph_indicator", "graph_labels", "node_labels")
+    suffixes = ("A", "graph_indicator", "graph_labels")
+    if name != "IMDB-BINARY":
+        suffixes += ("node_labels",)
     if not (folder / f"{name}_A.txt").exists():
         archive = download(
             f"https://www.chrsmrrs.com/graphkerneldatasets/{name}.zip",
@@ -551,8 +553,13 @@ def load_tu(name, data_root="data"):
     }
     indicator = arrays["graph_indicator"] - 1
     edges = arrays["A"].T - 1
-    node_classes = arrays["node_labels"].unique(sorted=True)
-    x = (arrays["node_labels"][:, None] == node_classes).float()
+    if name == "IMDB-BINARY":
+        unique_edges = canonical_edges(edges, len(indicator))
+        degree = torch.bincount(unique_edges.flatten(), minlength=len(indicator))
+        x = (degree.clamp_max(63)[:, None] == torch.arange(64)).float()
+    else:
+        node_classes = arrays["node_labels"].unique(sorted=True)
+        x = (arrays["node_labels"][:, None] == node_classes).float()
     _, labels = arrays["graph_labels"].unique(sorted=True, return_inverse=True)
     counts = torch.bincount(indicator)
     offsets = torch.cat((counts.new_zeros(1), counts.cumsum(0)))

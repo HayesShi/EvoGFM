@@ -94,3 +94,32 @@ def test_nystrom_handles_repeated_landmarks_without_nonfinite_features():
     assert torch.equal(actual[0], actual[1])
     expected = torch.exp(-torch.cdist(features, features).square())
     assert torch.allclose(actual @ actual.T, expected, atol=1e-4)
+
+
+def test_blockwise_ridge_matches_full_double_precision():
+    from evogfm.readout import ridge
+
+    generator = torch.Generator().manual_seed(71)
+    for dimensions, training_size in [(7, 19), (31, 13)]:
+        features = torch.randn(1035, dimensions, generator=generator)
+        labels = torch.arange(len(features)) % 3
+        train = torch.randperm(len(features), generator=generator)[:training_size]
+        valid = torch.arange(40, 90)
+        scores, info = ridge(features, labels, train, valid)
+        centered = features.double() - features[train].double().mean(0)
+        a = centered[train]
+        targets = (labels[train, None] == torch.arange(3)[None, :]).double()
+        bias = targets.mean(0)
+        targets -= bias
+        if training_size < dimensions:
+            gram = a @ a.T
+            weight = a.T @ torch.linalg.solve(
+                gram + info["alpha"] * torch.eye(training_size), targets
+            )
+        else:
+            gram = a.T @ a
+            weight = torch.linalg.solve(
+                gram + info["alpha"] * torch.eye(dimensions), a.T @ targets
+            )
+        expected = (centered @ weight + bias).float()
+        torch.testing.assert_close(scores, expected, rtol=1e-5, atol=1e-6)

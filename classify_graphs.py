@@ -76,6 +76,10 @@ def graph_vectors(model, graphs, name="PROTEINS"):
             pooled = torch.cat(
                 (nodes.mean(0), nodes.std(0, unbiased=False), nodes.max(0).values)
             )
+            if not torch.isfinite(pooled).all():
+                raise ValueError(
+                    f"Nonfinite representation in {name} graph {len(full)}"
+                )
             degree = torch.bincount(edges.flatten(), minlength=len(raw)).float()
             histogram = torch.histogram(
                 degree,
@@ -106,13 +110,17 @@ def graph_vectors(model, graphs, name="PROTEINS"):
 
 
 def evaluate(args):
+    if args.shots and args.shots < 5:
+        raise ValueError("Use at least 5 graphs per class for inner 5-fold selection")
     seed_all(42)
     torch.set_num_threads(args.threads)
     output = Path(args.output)
     output.mkdir(parents=True, exist_ok=True)
     model, _, checkpoint = load_checkpoint(args.checkpoint)
     graphs, labels = load_tu(args.dataset, args.data_root)
-    cache = output / "embeddings.pt"
+    cache = (
+        Path(args.embedding_cache) if args.embedding_cache else output / "embeddings.pt"
+    )
     if cache.exists():
         stored = torch.load(cache, weights_only=False)
         if stored["checkpoint"] != str(Path(args.checkpoint).resolve()):
@@ -142,7 +150,12 @@ def evaluate(args):
         dataset=args.dataset,
         graphs=len(graphs),
         source_epoch=checkpoint["epoch"],
-        node_features="one-hot node labels; no node attributes",
+        shots_per_class=args.shots,
+        node_features=(
+            "64 degree indicators; degree capped at 63; no original node attributes"
+            if args.dataset == "IMDB-BINARY"
+            else "one-hot node labels; no node attributes"
+        ),
         protocol="nested stratified 10-fold; inner 5-fold C selection; fold standard deviation",
         rows=[],
     )
@@ -153,15 +166,25 @@ def evaluate(args):
             inner_folds=5,
             C=[0.001, 0.01, 0.1, 1.0, 10.0, 100.0, 1000.0],
             seed=42,
+            shots_per_class=args.shots,
             balanced_readout=args.balanced_readout,
             block_weights=[0.1, 1.0, 10.0] if args.balanced_readout else [],
         ),
     )
     for variant, features in [("statistics", basic), ("evogfm", full)]:
+        begin = time.perf_counter()
         folds = []
         for fold, (train, test) in enumerate(
             tqdm(list(outer.split(features, y)), desc=f"{args.dataset} {variant} CV"), 1
         ):
+            if args.shots:
+                generator = np.random.default_rng(42 + fold)
+                train = np.concatenate(
+                    [
+                        generator.permutation(train[y[train] == label])[: args.shots]
+                        for label in np.unique(y)
+                    ]
+                )
             classifier = make_pipeline(StandardScaler(), SVC(kernel="rbf"))
             grid = {"svc__C": [0.001, 0.01, 0.1, 1.0, 10.0, 100.0, 1000.0]}
             if variant == "evogfm" and args.balanced_readout:
@@ -182,6 +205,11 @@ def evaluate(args):
                     fold=fold,
                     accuracy_percent=100 * float(fitted.score(features[test], y[test])),
                     parameters=parameters,
+                    **(
+                        dict(train_graphs=len(train), train_indices=train.tolist())
+                        if args.shots
+                        else {}
+                    ),
                 )
             )
             print(variant, fold, folds[-1], flush=True)
@@ -192,6 +220,7 @@ def evaluate(args):
                 accuracy_percent=float(np.mean(values)),
                 fold_std_percent=float(np.std(values)),
                 folds=folds,
+                fit_seconds=time.perf_counter() - begin,
             )
         )
         save_json(output / "results.json", result)
@@ -205,7 +234,13 @@ if __name__ == "__main__":
     parser.add_argument("--output", default="runs/proteins")
     parser.add_argument("--threads", type=int, default=4)
     parser.add_argument(
-        "--dataset", choices=["PROTEINS", "NCI1", "MUTAG", "DD"], default="PROTEINS"
+        "--dataset",
+        choices=["PROTEINS", "NCI1", "MUTAG", "DD", "IMDB-BINARY"],
+        default="PROTEINS",
     )
     parser.add_argument("--balanced-readout", action="store_true")
+    parser.add_argument(
+        "--shots", type=int, default=0, help="Training graphs per class; 0 uses all"
+    )
+    parser.add_argument("--embedding-cache", help="Reuse frozen graph representations")
     evaluate(parser.parse_args())

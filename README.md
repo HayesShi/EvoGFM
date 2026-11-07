@@ -26,9 +26,9 @@ The model estimates relation directions from each graph and uses one learned inv
 
 The [paper draft](1106-EvoGFM_paper.md) is included unchanged. This release contains the current empirical implementation, including task-conditioned calibration and the LP residual readout. The draft's convex relation-calibration analysis does not provide a regret guarantee for the nonlinear task-logit GGN optimizer used by `continual.py`.
 
-The latest [V6 experiments](EXPERIMENTS_V6.md) retain the same frozen source model and add RBF features, training-error correction and balanced graph pooling. Evaluation covers 11 node-classification graphs, public and hard-negative link prediction, joint five-shot/sparse-edge adaptation, PROTEINS/NCI1 graph classification, and a four-domain continual stream. [V6 measured results](results_v6.json), [V5](results_v5.json) and [V4](results.json) are stored separately.
+The latest [V7 experiments](EXPERIMENTS_V7.md) retain the same frozen source model and V6 readout family. Evaluation now covers 16 node-classification graphs, five graph-classification datasets, Cora/Citeseer public and official hard-negative link prediction, joint label/edge scarcity, graph-level five/twenty-shot adaptation, and a six-domain continual stream with four future-domain probes. [V7 measured results](results_v7.json), [V6](results_v6.json), [V5](results_v5.json) and [V4](results.json) are stored separately.
 
-[Five complete published comparison tables](BEST_TABLES.md) preserve all original baseline rows and dataset columns, adding our best observed V4–V6 results. The [provenance index](best_results.json) identifies each result's version and measurement file. This cross-version development summary is separate from the latest V6 results.
+[Five complete published comparison tables](BEST_TABLES.md) preserve all original baseline rows and dataset columns, adding our best observed V4–V7 results. The [provenance index](best_results.json) identifies each result's version and measurement file. This cross-version development summary is separate from the latest V7 results.
 
 ## Install
 
@@ -113,7 +113,7 @@ python continual.py --stream cora citeseer actor amazon-ratings --future mineswe
 
 For NC/LP, inspect validation results before adding `--split test`. Five-shot means five training nodes per class **plus official validation labels for selection**. The joint setting also keeps 20% of graph edges. Mixed link calibration uses training-graph hard nonedges; official HeaRT candidates are unchanged. PROTEINS/NCI1 use one-hot node labels without continuous node attributes. Balanced pooling fits scaling inside each training fold and selects the encoder-block weight in inner CV. Local official raw caches are reused when available.
 
-The `optimization-v7` branch adds dataset support for the next expansion; measured results above remain V6. New NC targets are Wisconsin, Cornell, Chameleon, Squirrel and Coauthor-CS. Geom-GCN targets use official split 0; Coauthor-CS uses GraphAny's seed-42 stratified split with 300 total training nodes. Chameleon/Squirrel use the original Geom-GCN graphs. MUTAG and DD extend whole-graph classification with the same nested SVM evaluation. These new experiments have not finished yet.
+V7 adds Wisconsin, Cornell, Chameleon, Squirrel and Coauthor-CS. Geom-GCN targets use official split 0; Coauthor-CS uses GraphAny's seed-42 stratified split with 300 total training nodes. Chameleon/Squirrel use the original Geom-GCN graphs. MUTAG, DD and IMDB-BINARY extend whole-graph classification with the same nested SVM evaluation. IMDB has no original node attributes; input features are 64 degree indicators, with degrees capped at 63. Biochemical graphs retain one-hot node labels.
 
 ```bash
 python prepare.py --datasets wisconsin cornell chameleon squirrel coauthor-cs
@@ -121,9 +121,18 @@ python evaluate.py --nc wisconsin cornell chameleon squirrel coauthor-cs --lp --
 python evaluate.py --nc chameleon squirrel coauthor-cs --lp --node-readout advanced --shots 5 --edge-rate 0.2 --output runs/v7_joint
 python classify_graphs.py --dataset MUTAG --balanced-readout --output runs/v7_mutag
 python classify_graphs.py --dataset DD --balanced-readout --output runs/v7_dd
+python classify_graphs.py --dataset IMDB-BINARY --balanced-readout --output runs/v7_imdb
+
+# Five labeled graphs per class, including inner selection inside that budget.
+python classify_graphs.py --dataset IMDB-BINARY --balanced-readout --shots 5 --embedding-cache runs/v7_imdb/embeddings.pt --output runs/v7_imdb_5shot
+# Use --shots 20 for the second label budget; use 0 for all training graphs.
+
+# Re-evaluate saved continual prefixes on additional future domains, with no updates.
+python continual.py --stream cora citeseer wisconsin cornell actor amazon-ratings --future minesweeper tolokers --task both --nc-metric auto --output runs/v7_continual
+python evaluate_future.py --states runs/v7_continual --datasets minesweeper tolokers chameleon squirrel --output runs/v7_future
 ```
 
-Cora is the next official HeaRT target: install its official files under `data/heart/cora/`, then run `python heart.py --dataset cora --negative-mode mixed --output runs/v7_heart_cora`. Use the same frozen source checkpoint for all expansion runs; validation precedes `--split test`. See the V6 commands for other checkpoint locations.
+Cora official HeaRT files belong under `data/heart/cora/`. Run `python heart.py --dataset cora --negative-mode uniform --output runs/v7_heart_cora` for the V7 configuration selected on validation MRR. Citeseer retains mixed calibration. Use the same frozen source checkpoint for all expansion runs; validation precedes `--split test`. See the experiment reports for measured checkpoint paths.
 
 **Continual calibration.** Each task updates 32 inverse coefficients; eight bias coefficients remain frozen. Its 40 × 40 curvature metric starts with source task information and accumulates final-logit GGN estimates. The runner compares `static`, `cumulative` and `reset` controls. NC uses official training labels; LP uses a separate native masked-edge split. Future-domain labels are used only for reporting. The same two task states serve every graph; no per-domain adapter is stored.
 
@@ -138,15 +147,17 @@ Raw numerical features are row-normalized when nonnegative, then mapped into one
 | Node classification | Cora, Roman-empire | Planetoid masks / Roman mask column 0, following the saved seed-42 [GraphAny](https://github.com/DeepGraphLearning/GraphAny) convention (ICLR 2025) |
 | Expanded node classification | Citeseer, Amazon-ratings, Minesweeper, Tolokers, Questions | Planetoid masks / official heterophily mask column 0; binary graphs use ROC-AUC |
 | Link prediction | Cora, Citeseer | [NCN](https://github.com/GraphPKU/NeuralCommonNeighbor/blob/main/ogbdataset.py) 70/10/20 split and Hits@100 (ICLR 2024) |
-| Hard link prediction | Citeseer | [HeaRT](https://github.com/Juanhui28/HeaRT) official positives and 500 hard negatives per positive (NeurIPS 2023) |
+| Hard link prediction | Cora, Citeseer | [HeaRT](https://github.com/Juanhui28/HeaRT) official positives and 500 hard negatives per positive (NeurIPS 2023) |
 | Larger node classification | ogbn-arxiv | Official OGB time split (NeurIPS 2020); 169,343 nodes |
 | Additional heterophily | Actor | Official Geom-GCN split 0 (ICLR 2020); GraphAny published reference |
+| Additional Geom-GCN targets | Wisconsin, Cornell, Chameleon, Squirrel | Official split 0; original graphs for GraphAny references |
 | Additional node classification | Computers, WikiCS | GraphAny's stratified 200-total-label Computers split / official WikiCS split 0 |
-| Graph classification | PROTEINS, NCI1 | TU graphs; nested 10-fold SVM, inspired by GraphCL evaluation (NeurIPS 2020) |
+| Wider node features | Coauthor-CS | GraphAny's stratified 300-total-label split; 18,333 nodes / 6,805 features |
+| Graph classification | PROTEINS, NCI1, MUTAG, DD, IMDB-BINARY | TU graphs; nested 10-fold SVM, inspired by GraphCL evaluation (NeurIPS 2020) |
 
 Public data come from [Planetoid](https://github.com/kimiyoung/planetoid), [GNN Benchmark](https://github.com/shchur/gnn-benchmark), [Geom-GCN](https://github.com/graphdml-uiuc-jlu/geom-gcn) and [Heterophilous Graphs](https://github.com/yandex-research/heterophilous-graphs). The LP splitter preserves PyG's Planetoid edge order before randomization so that the seed-42 splits match the existing experiments.
 
-Recorded V6 development results from the same source checkpoint selected at epoch 21. NC rows use the advanced readout; the public LP and retained HeaRT configurations are unchanged:
+Selected V6/V7 development results from the same source checkpoint selected at epoch 21. NC rows use the advanced readout; public random-negative LP retains its earlier configuration:
 
 | Public task | EvoGFM, seed 42 | Published reference |
 | :--- | ---: | ---: |
@@ -158,13 +169,21 @@ Recorded V6 development results from the same source checkpoint selected at epoc
 | ogbn-arxiv NC, accuracy (%) | 67.88 | GraphAny-Wisconsin: 57.79 ± 0.56 |
 | Computers NC, accuracy (%) | 84.73 | GraphAny-Wisconsin: 82.00 ± 1.14 |
 | WikiCS NC, accuracy (%) | 79.75 | GraphAny-Wisconsin: 73.77 ± 0.83 |
+| Wisconsin NC, accuracy (%) | 76.47 | GraphAny-Wisconsin: 71.77 ± 5.98 |
+| Cornell NC, accuracy (%) | 81.08 | GraphAny-Wisconsin: 66.49 ± 1.48 |
+| Chameleon NC, accuracy (%) | 69.74 | GraphAny-Wisconsin: 60.09 ± 1.93 |
+| Squirrel NC, accuracy (%) | 51.87 | GraphAny-Wisconsin: 42.34 ± 3.46 |
+| Coauthor-CS NC, accuracy (%) | 91.47 | GraphAny-Wisconsin: 90.85 ± 0.63 |
 | Cora LP, Hits@100 (%) | 86.35 | NCNC: 89.65 ± 1.36 |
 | Citeseer LP, Hits@100 (%) | 92.64 | NCNC: 93.47 ± 0.95 |
 | Citeseer HeaRT LP, MRR (%) | 31.17 | NCN: 28.65 ± 1.21 |
+| Cora HeaRT LP, MRR (%) | 16.97 | NCN: 14.66 ± 0.95 |
 
 The references are reported by the papers; external baselines were not retrained. Training sources and budgets differ, and these public tests were observed during development. These numbers are development comparisons. Checkpoints are generated locally by `train.py` and are not included in this repository.
 
 The [complete comparison tables](BEST_TABLES.md) cover GraphAny, NCN, HeaRT and GraphCL, including every original model and dataset. The [V6 report](EXPERIMENTS_V6.md) records gains and unchanged results, the rejected link trial, and all continual controls. Balanced pooling raises PROTEINS from 75.65% to 77.18%, still below the statistics-only control's 77.26%; NCI1 reaches 78.39% versus that control's 72.00%. Their ± values are outer-fold variation, while GraphCL reports a different averaging protocol. The [V5](EXPERIMENTS_V5.md) and [V4](EXPERIMENTS.md) reports preserve earlier declines and inverse ablations. Stable future-domain knowledge accumulation remains unproven.
+
+The [V7 report](EXPERIMENTS_V7.md) adds all new graphs and the full low-resource tables. MUTAG reaches 87.72%; DD 77.59% and IMDB 70.50% remain below GraphCL's published means. Joint scarcity gives Coauthor-CS 82.40% versus the original readout's 75.96%, while Squirrel declines. Continual cumulative LP retains old domains better than reset, but future-domain transfer remains mixed. Symmetric eigensolvers retry in float64 on float32 failure; ridge predictions run in exact float64 blocks to limit high-dimensional memory use.
 
 ## Files and outputs
 
@@ -175,6 +194,7 @@ evaluate.py                 Public NC / LP evaluation and inverse ablation
 heart.py                    Official HeaRT hard-negative evaluation
 classify_graphs.py          Frozen graph representations and nested SVM evaluation
 continual.py                Task-conditioned stream experiments
+evaluate_future.py          Replay saved continual states on future domains
 evogfm/model.py             Inverse map and programmed attention
 evogfm/features.py          Graph frame, propagation and pair features
 evogfm/data.py              Graph loaders and split protocols
@@ -187,11 +207,13 @@ tests/                      Numerical and protocol regression tests
 EXPERIMENTS.md              Expanded experiments and mechanism findings
 EXPERIMENTS_V5.md           Larger datasets, harder tasks and V5 comparisons
 EXPERIMENTS_V6.md           Eleven graphs, joint scarcity and graph pooling
+EXPERIMENTS_V7.md           Sixteen graphs, graph-label efficiency and six-domain streams
 BEST_TABLES.md              Five complete published tables with our best results
 best_results.json           Cross-version best-result provenance
 results.json                Measured development results
 results_v5.json             V5 measured results and PROTEINS folds
 results_v6.json             V6 measured results, folds and continual matrices
+results_v7.json             V7 measurements, support indices and future trajectories
 1106-EvoGFM_paper.md         Original supplied manuscript draft
 ```
 

@@ -7,10 +7,11 @@ from sklearn.metrics import roc_auc_score
 
 def ridge(h, y, train, val, alphas=(0.01, 0.1, 1.0, 10.0, 100.0), metric="accuracy"):
     """Read only train/validation labels. Return fitted scores, not test metrics."""
-    h = h.double()
-    mu = h[train].mean(0)
-    centered = h - mu
-    a = centered[train]
+    # Keep wide graph representations in their original dtype. Only the
+    # training system and one prediction block need double precision at once.
+    training = h[train].double()
+    mu = training.mean(0)
+    a = training - mu
     classes = y[train].unique(sorted=True)
     if metric not in ("accuracy", "auc"):
         raise ValueError("metric must be accuracy or auc")
@@ -29,7 +30,9 @@ def ridge(h, y, train, val, alphas=(0.01, 0.1, 1.0, 10.0, 100.0), metric="accura
         weight = vectors @ (rhs / (values.clamp_min(0) + alpha)[:, None])
         if dual:
             weight = a.T @ weight
-        score = centered @ weight + bias
+        score = torch.cat(
+            [(block.double() - mu) @ weight + bias for block in h.split(1024)]
+        )
         if metric == "auc":
             acc = float(
                 roc_auc_score(y[val].numpy(), (score[val, 1] - score[val, 0]).numpy())
