@@ -13,16 +13,11 @@ from tqdm import tqdm
 from evogfm.data import seed_all, canonical_edges, save_json
 from evogfm.features import (
     preprocess,
-    contexts,
-    task_features,
-    pair_context,
-    pair_channels,
-    attention,
-    node_representations,
 )
 from evogfm.evaluation import fit_link_readout
-from evogfm.readout import predict_residual, hard_negative_metrics
+from evogfm.readout import hard_negative_metrics
 from evogfm.training import load_checkpoint
+from evogfm.link_inference import LinkScorer
 
 
 def evaluate(
@@ -66,23 +61,12 @@ def evaluate(
     )
     score_parts = []
     with torch.no_grad():
-        state = model.state(x, edges, 0.85)
-        parts, h = node_representations(model, state, raw, edges, hops=2)
-        visible = contexts(edges, len(raw), edges[:, :0])["visible"]
-        prepared = (attention(model, state, visible), parts + [h])
-        content = pair_context(raw, edges)
+        scorer = LinkScorer(model, head, raw, x, edges, 0.85)
         pairs = torch.cat((positives, negatives.reshape(-1, 2))).T
         for batch in tqdm(
             pairs.split(batch_size, dim=1), desc=f"HeaRT {dataset} {split}"
         ):
-            ctx = contexts(edges, len(raw), batch)
-            base = pair_channels(raw, edges, batch, prepared=content)
-            f, _ = task_features(
-                model, state, raw, edges, batch, ctx, base, prepared=prepared
-            )
-            score_parts.append(
-                predict_residual(f, head(f).squeeze(1), fitted["fitted"])
-            )
+            score_parts.append(scorer.score(batch, fitted["fitted"], batch_size))
     scores = torch.cat(score_parts)
     positive = scores[: len(positives), None]
     negative = scores[len(positives) :].reshape(negatives.shape[:2])

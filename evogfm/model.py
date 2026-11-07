@@ -228,6 +228,12 @@ class ProgrammedLayer(nn.Module):
         A development layout ablation. The historical BFS-block path is intact.
         edge_index includes both directions and self loops, exactly once each.
         """
+        if (
+            not self.training
+            and not torch.is_grad_enabled()
+            and edge_index.shape[1] > 100_000
+        ):
+            return self.forward_graph_chunked(h, left, s, right, edge_index, frame_z)
         x = self.norm1(h)
         n = len(x)
         if self.mode == "vanilla":
@@ -269,6 +275,112 @@ class ProgrammedLayer(nn.Module):
         out.index_add_(0, target, weight[:, :, None] * v[source])
         h = h + F.dropout(self.output(out.reshape(n, -1)), self.dropout, self.training)
         h = h + F.dropout(self.ff(self.norm2(h)), self.dropout, self.training)
+        return h
+
+    def forward_graph_chunked(
+        self, h, left, s, right, edge_index, frame_z=None, batch_size=32768
+    ):
+        """Full graph softmax and value aggregation, with bounded edge temporaries."""
+        if frame_z is not None and self.mode == "coupled" and len(h) > 100_000:
+            return self.forward_graph_by_head(
+                h, left, s, right, edge_index, frame_z, batch_size
+            )
+        x = self.norm1(h)
+        n = len(x)
+        if self.mode == "vanilla":
+            q = self.q(x).reshape(n, self.heads, self.rank)
+            k = self.k(x).reshape(n, self.heads, self.rank)
+        else:
+            scale = len(s) ** 0.25
+            wq = scale * left * s.abs().clamp_min(1e-20).sqrt()[None, :]
+            wk = scale * right * (s.sign() * s.abs().clamp_min(1e-20).sqrt())[None, :]
+            if frame_z is None:
+                q = torch.stack([p(x) @ wq for p in self.inputs], dim=1)
+                k = torch.stack([p(x) @ wk for p in self.inputs], dim=1)
+            else:
+                temperature = (F.softplus(self.log_temperature) + 0.05).sqrt()[
+                    None, :, None
+                ]
+                q, k = (frame_z @ wq)[:, None] * temperature, (frame_z @ wk)[
+                    :, None
+                ] * temperature
+        v = self.value(x).reshape(n, self.heads, self.rank)
+        target, source = edge_index
+        scores = h.new_empty(len(target), self.heads)
+        for start in range(0, len(target), batch_size):
+            stop = min(start + batch_size, len(target))
+            a, b = target[start:stop], source[start:stop]
+            scores[start:stop] = (q[a] * k[b]).sum(-1) / math.sqrt(q.shape[-1])
+        if self.mode == "hybrid":
+            bq = self.q(x).reshape(n, self.heads, self.rank)
+            bk = self.k(x).reshape(n, self.heads, self.rank)
+            for start in range(0, len(target), batch_size):
+                stop = min(start + batch_size, len(target))
+                a, b = target[start:stop], source[start:stop]
+                scores[start:stop] = (bq[a] * bk[b]).sum(-1) / math.sqrt(
+                    self.rank
+                ) + self.program_gate.tanh() * scores[start:stop]
+        index = target[:, None].expand(-1, self.heads)
+        maximum = scores.new_full((n, self.heads), -torch.inf)
+        maximum.scatter_reduce_(0, index, scores, reduce="amax", include_self=True)
+        weights = (scores - maximum[target]).exp()
+        denominator = weights.new_zeros(n, self.heads).scatter_add_(0, index, weights)
+        weights = weights / denominator[target].clamp_min(1e-12)
+        out = h.new_zeros(n, self.heads, self.rank)
+        for start in range(0, len(target), batch_size):
+            stop = min(start + batch_size, len(target))
+            out.index_add_(
+                0,
+                target[start:stop],
+                weights[start:stop, :, None] * v[source[start:stop]],
+            )
+        h = h + self.output(out.reshape(n, -1))
+        for start in range(0, n, batch_size):
+            block = h[start : start + batch_size]
+            block.add_(self.ff(self.norm2(block)))
+        return h
+
+    def forward_graph_by_head(
+        self, h, left, s, right, edge_index, frame_z, batch_size=32768
+    ):
+        """Evaluate the same programmed heads sequentially on million-node graphs."""
+        x = self.norm1(h)
+        n = len(h)
+        scale = len(s) ** 0.25
+        wq = scale * left * s.abs().clamp_min(1e-20).sqrt()[None, :]
+        wk = scale * right * (s.sign() * s.abs().clamp_min(1e-20).sqrt())[None, :]
+        q, k = frame_z @ wq, frame_z @ wk
+        temperature = (F.softplus(self.log_temperature) + 0.05).sqrt()
+        v = self.value(x).reshape(n, self.heads, self.rank)
+        target, source = edge_index
+        out = h.new_zeros(n, self.heads, self.rank)
+        for head in range(self.heads):
+            scores = h.new_empty(len(target))
+            for start in range(0, len(target), batch_size):
+                stop = min(start + batch_size, len(target))
+                a, b = target[start:stop], source[start:stop]
+                scores[start:stop] = (
+                    (q[a] * temperature[head]) * (k[b] * temperature[head])
+                ).sum(-1) / math.sqrt(len(s))
+            maximum = scores.new_full((n,), -torch.inf)
+            maximum.scatter_reduce_(0, target, scores, reduce="amax", include_self=True)
+            weights = (scores - maximum[target]).exp()
+            denominator = weights.new_zeros(n).index_add_(0, target, weights)
+            weights /= denominator[target].clamp_min(1e-12)
+            accumulated = h.new_zeros(n, self.rank)
+            for start in range(0, len(target), batch_size):
+                stop = min(start + batch_size, len(target))
+                accumulated.index_add_(
+                    0,
+                    target[start:stop],
+                    weights[start:stop, None] * v[source[start:stop], head],
+                )
+            out[:, head] = accumulated
+        del x, q, k, v, scores, weights, accumulated
+        h = h + self.output(out.reshape(n, -1))
+        for start in range(0, n, batch_size):
+            block = h[start : start + batch_size]
+            block.add_(self.ff(self.norm2(block)))
         return h
 
 
@@ -393,7 +505,11 @@ class InverseLawGFM(nn.Module):
             )
             if e.shape[1] > budget:
                 # Deterministic quadrature over the fixed edge order, common to controls.
-                ix = torch.linspace(0, e.shape[1] - 1, budget, device=e.device).long()
+                # Float32 rounds large edge IDs beyond the array endpoint.
+                dtype = torch.float64 if e.shape[1] > 2**24 else torch.float32
+                ix = torch.linspace(
+                    0, e.shape[1] - 1, budget, device=e.device, dtype=dtype
+                ).long()
                 e = e[:, ix]
             if e.shape[1] == 0:
                 raise ValueError("empty visible graph")

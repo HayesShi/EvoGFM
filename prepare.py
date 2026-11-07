@@ -14,27 +14,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
     for name in args.datasets:
         graph = load_graph(name, args.data_root)
-        if name in [
-            "cora",
-            "citeseer",
-            "roman-empire",
-            "amazon-ratings",
-            "minesweeper",
-            "tolokers",
-            "questions",
-            "actor",
-            "ogbn-arxiv",
-            "computers",
-            "wikics",
-            "wisconsin",
-            "cornell",
-            "chameleon",
-            "squirrel",
-            "coauthor-cs",
-        ]:
-            load_protocol(name, "nc", args.data_root)
-        if name in ["cora", "citeseer"]:
-            load_protocol(name, "lp", args.data_root)
+        if "train" in graph:
+            load_protocol(name, "nc", args.data_root, graph=graph)
+        if name in ["cora", "citeseer", "pubmed"]:
+            load_protocol(name, "lp", args.data_root, graph=graph)
         print(
             f"{name}: {len(graph['x'])} nodes, {graph['edges'].shape[1]} undirected edges",
             flush=True,

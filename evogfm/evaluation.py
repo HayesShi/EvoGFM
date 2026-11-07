@@ -13,7 +13,6 @@ from .features import (
     task_features,
     pair_channels,
     node_representations,
-    label_transition,
     hard_negative_pool,
 )
 from .readout import (
@@ -167,7 +166,7 @@ def evaluate(
         graph = load_graph(name, data_root)
         raw, x = preprocess(graph)
         edges = graph["edges"]
-        protocol = load_protocol(name, "nc", data_root)
+        protocol = load_protocol(name, "nc", data_root, graph=graph)
         train = protocol["train"]
         if shots:
             generator = torch.Generator().manual_seed(42)
@@ -190,8 +189,13 @@ def evaluate(
                 if nc_metric == "auto" and len(graph["y"].unique()) == 2
                 else ("accuracy" if nc_metric == "auto" else nc_metric)
             )
-            parts, values = node_representations(
-                model, state, raw, edges, hops=2 if node_readout == "current" else 4
+            parts, values, transition = node_representations(
+                model,
+                state,
+                raw,
+                edges,
+                hops=2 if node_readout == "current" else 4,
+                return_transition=True,
             )
             if node_readout in ("enhanced", "advanced"):
                 scores, info = enhanced_ridge(
@@ -200,7 +204,7 @@ def evaluate(
                     graph["y"],
                     train,
                     protocol["val"],
-                    label_transition(model, state, edges),
+                    transition,
                     metric=metric,
                     advanced=node_readout == "advanced",
                 )
@@ -238,7 +242,7 @@ def evaluate(
     for name in tqdm(lp, desc="link prediction"):
         graph = load_graph(name, data_root)
         raw, x = preprocess(graph)
-        protocol = load_protocol(name, "lp", data_root)
+        protocol = load_protocol(name, "lp", data_root, graph=graph)
         edges = protocol["train"]["edge"].T
         fitted = fit_link_readout(model, head, raw, x, edges)
         readouts[name] = fitted

@@ -16,14 +16,27 @@ def global_svd_features(x, dim=100):
     x = torch.as_tensor(x).float()
     if x.shape[1] <= dim:
         return F.pad(x, (0, dim - x.shape[1])).contiguous()
-    options = {"driver": "gesvd"} if x.is_cuda else {}
-    _, _, vh = torch.linalg.svd(x, full_matrices=False, **options)
-    basis = vh[: min(dim, len(vh))].T
+    if not x.is_cuda and x.numel() > 50_000_000 and x.shape[0] >= x.shape[1]:
+        basis = covariance_svd_basis(x, dim)
+    else:
+        options = {"driver": "gesvd"} if x.is_cuda else {}
+        _, _, vh = torch.linalg.svd(x, full_matrices=False, **options)
+        basis = vh[: min(dim, len(vh))].T
     pivot = basis.abs().argmax(0)
     sign = basis[pivot, torch.arange(basis.shape[1], device=x.device)].sign()
     basis = basis * sign.unsqueeze(0)
     result = x @ basis
     return F.pad(result, (0, dim - result.shape[1])).contiguous()
+
+
+def covariance_svd_basis(x, dim):
+    """Exact right singular frame from the complete float64 Gram matrix."""
+    gram = torch.zeros(x.shape[1], x.shape[1], dtype=torch.float64)
+    for block in x.split(1024):
+        value = block.double()
+        gram += value.T @ value
+    _, vectors = torch.linalg.eigh(gram)
+    return vectors[:, -min(dim, len(vectors)) :].flip(1).float()
 
 
 def adjacency(edges, n):
@@ -109,21 +122,42 @@ def pair_channels(x, edges, pairs, batch_size=256, prepared=None):
     )
 
 
-def node_representations(model, state, raw, edges, hops=4, uniform=False):
+def node_representations(
+    model, state, raw, edges, hops=4, uniform=False, return_transition=False
+):
     """Keep propagation orders separate so the readout can retain local signal."""
     n = len(raw)
     visible = torch.cat((edges, edges.flip(0)), dim=1)
     visible = visible[:, (visible[0] * n + visible[1]).argsort()]
     weight = attention(model, state, visible, uniform)
+    h = F.normalize(model.embed_graph(state, visible), dim=1) if n > 100_000 else None
     value = raw
     parts = [F.normalize(value, dim=1)]
     for _ in range(hops):
-        value = value.new_zeros(value.shape).index_add_(
-            0, visible[0], weight[:, None] * value[visible[1]]
-        )
+        value = weighted_propagate(value, visible, weight)
         parts.append(F.normalize(value, dim=1))
-    h = F.normalize(model.embed_graph(state, visible), dim=1)
+    if h is None:
+        h = F.normalize(model.embed_graph(state, visible), dim=1)
+    if return_transition:
+        degree = torch.bincount(visible[0], minlength=n)
+        offsets = torch.cat((degree.new_zeros(1), degree.cumsum(0)))
+        transition = sp.csr_matrix(
+            (weight.detach().numpy(), visible[1].numpy(), offsets.numpy()), shape=(n, n)
+        )
+        return parts, h, transition
     return parts, h
+
+
+def weighted_propagate(value, visible, weight):
+    """Identical full-edge aggregation without an E-by-feature temporary at inference."""
+    if not torch.is_grad_enabled() and visible.shape[1] * value.shape[1] > 8_000_000:
+        matrix = sp.csr_matrix(
+            (weight.numpy(), tuple(visible.numpy())), shape=(len(value), len(value))
+        )
+        return torch.from_numpy(matrix @ value.numpy())
+    return value.new_zeros(value.shape).index_add_(
+        0, visible[0], weight[:, None] * value[visible[1]]
+    )
 
 
 def label_transition(model, state, edges):
@@ -182,7 +216,15 @@ def attention(model, state, visible, uniform=False):
     left, s, right, _ = model.attention_program(state)
     q = state.z @ left
     k = state.z @ right
-    score = ((q[target] * k[source]) * s).sum(1)
+    if not torch.is_grad_enabled() and len(target) > 100_000:
+        score = torch.cat(
+            [
+                ((q[a] * k[b]) * s).sum(1)
+                for a, b in zip(target.split(32768), source.split(32768))
+            ]
+        )
+    else:
+        score = ((q[target] * k[source]) * s).sum(1)
     temperature = F.softplus(model.layers[0].log_temperature).mean() + 0.05
     score = score * temperature
     maximum = score.new_full((n,), -torch.inf)

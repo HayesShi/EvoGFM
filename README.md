@@ -26,9 +26,9 @@ The model estimates relation directions from each graph and uses one learned inv
 
 The [paper draft](1106-EvoGFM_paper.md) is included unchanged. This release contains the current empirical implementation, including task-conditioned calibration and the LP residual readout. The draft's convex relation-calibration analysis does not provide a regret guarantee for the nonlinear task-logit GGN optimizer used by `continual.py`.
 
-The latest [V7 experiments](EXPERIMENTS_V7.md) retain the same frozen source model and V6 readout family. Evaluation now covers 16 node-classification graphs, five graph-classification datasets, Cora/Citeseer public and official hard-negative link prediction, joint label/edge scarcity, graph-level five/twenty-shot adaptation, and a six-domain continual stream with four future-domain probes. [V7 measured results](results_v7.json), [V6](results_v6.json), [V5](results_v5.json) and [V4](results.json) are stored separately.
+The latest [V8 experiments](EXPERIMENTS_V8.md) extend the frozen model to the missing GraphAny, NCN, HeaRT and GraphCL datasets. Completed coverage is recorded in that report and [results_v8.json](results_v8.json); large-graph runs are still in progress. [V7](EXPERIMENTS_V7.md) contains scarcity and continual-learning experiments, including a six-domain stream and four future-domain probes.
 
-[Five complete published comparison tables](BEST_TABLES.md) preserve all original baseline rows and dataset columns, adding our best observed V4–V7 results. The [provenance index](best_results.json) identifies each result's version and measurement file. This cross-version development summary is separate from the latest V7 results.
+[Six complete published comparison tables](BEST_TABLES.md) preserve all original baseline rows and dataset columns, adding our best observed V4–V8 results. The [provenance index](best_results.json) identifies each result's version and measurement file. This cross-version development summary is separate from a single fixed-configuration experiment.
 
 ## Install
 
@@ -133,6 +133,31 @@ python evaluate_future.py --states runs/v7_continual --datasets minesweeper tolo
 ```
 
 Cora official HeaRT files belong under `data/heart/cora/`. Run `python heart.py --dataset cora --negative-mode uniform --output runs/v7_heart_cora` for the V7 configuration selected on validation MRR. Citeseer retains mixed calibration. Use the same frozen source checkpoint for all expansion runs; validation precedes `--split test`. See the experiment reports for measured checkpoint paths.
+
+V8 adds the remaining public tasks. These examples assume the reference checkpoint is at `runs/reference/best.pt`:
+
+```bash
+python prepare.py --datasets air-brazil air-eu air-us wiki blogcatalog dblp full-cora coauthor-physics deezer lastfm-asia
+python evaluate.py --checkpoint runs/reference/best.pt --nc blogcatalog dblp full-cora coauthor-physics deezer lastfm-asia --lp --node-readout advanced --output runs/v8_nodes
+python evaluate.py --checkpoint runs/reference/best.pt --nc blogcatalog dblp full-cora coauthor-physics deezer lastfm-asia --lp --node-readout advanced --split test --output runs/v8_nodes
+
+# Target-excluded source training, e.g. for Pubmed evaluation.
+python train.py --sources photo texas --epochs 60 --output runs/loso_pubmed
+
+# Official OGB split and complete negative pools; validation precedes test.
+python link_benchmark.py --checkpoint runs/reference/best.pt --dataset ogbl-collab --output runs/v8/ogbl-collab
+# Also accepts ogbl-ddi, ogbl-ppa and ogbl-citation2.
+python link_benchmark.py --checkpoint runs/reference/best.pt --dataset ogbl-collab --heart-archive /path/to/HeaRT.tar.gz --calibration-cache runs/v8/ogbl-collab/calibration.pt --output runs/v8/heart_ogbl-collab
+
+# Additional graph tasks: COLLAB, REDDIT-BINARY, REDDIT-MULTI-5K.
+python classify_graphs.py --checkpoint runs/reference/best.pt --dataset COLLAB --balanced-readout --workers 4 --resume --output runs/v8/graph_collab
+```
+
+GraphAny's remaining numerical graphs use 20 × number-of-classes stratified training nodes and a 50/50 validation/test split of the remainder, seed 42. Texas uses the published `texas_4_classes` masks. Pubmed, Photo and Texas require checkpoints trained with that target excluded. Whole-graph classification retains ten outer folds, five inner folds and the same SVM candidate grid; `--workers` parallelizes independent fits and `--resume` preserves completed folds.
+
+OGB archives are read directly from `data/raw/ogb/`. `--heart-archive` accepts the [official HeaRT archive](https://zenodo.org/records/22184581) or complete ordered `.part` chunks. PPA uses its released positive-subset indices. Set optional `data/locations.json` keys `ogbn-products` and `reddit` to existing original raw folders to reuse downloads. Evaluate these large node datasets one at a time. Large computations preserve all nodes, visible edges and official evaluation candidates.
+
+LastFMAsia uses a pinned [original NPZ mirror](https://github.com/wuyucheng2002/PPGSL/blob/84b67e2ea709f4740a0cb7b4c11012664bc64f7b/data/LastFMAsia/raw/lastfm_asia.npz). Deezer falls back to a pinned [DGL input cache](https://github.com/Qy-ds/G-CORMoL/blob/d298647acb960bf09483fc0fd3cdf9ba061c807f/datas/DeezerEurope.bin) when its original host fails. That one-time conversion requires a DGL build compatible with your PyTorch; alternatively place the original 128D `deezer_europe.npz` in `data/raw/deezer/`. The V8 report records the mirror checks.
 
 **Continual calibration.** Each task updates 32 inverse coefficients; eight bias coefficients remain frozen. Its 40 × 40 curvature metric starts with source task information and accumulates final-logit GGN estimates. The runner compares `static`, `cumulative` and `reset` controls. NC uses official training labels; LP uses a separate native masked-edge split. Future-domain labels are used only for reporting. The same two task states serve every graph; no per-domain adapter is stored.
 

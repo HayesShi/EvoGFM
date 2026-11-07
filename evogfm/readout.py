@@ -3,15 +3,13 @@
 import torch
 import torch.nn.functional as F
 from sklearn.metrics import roc_auc_score
+from .feature_views import FeatureView, join_features, quadratic_features, rbf_features
 
 
 def ridge(h, y, train, val, alphas=(0.01, 0.1, 1.0, 10.0, 100.0), metric="accuracy"):
     """Read only train/validation labels. Return fitted scores, not test metrics."""
     # Keep wide graph representations in their original dtype. Only the
     # training system and one prediction block need double precision at once.
-    training = h[train].double()
-    mu = training.mean(0)
-    a = training - mu
     classes = y[train].unique(sorted=True)
     if metric not in ("accuracy", "auc"):
         raise ValueError("metric must be accuracy or auc")
@@ -21,10 +19,60 @@ def ridge(h, y, train, val, alphas=(0.01, 0.1, 1.0, 10.0, 100.0), metric="accura
     bias = target.mean(0)
     target = target - bias
     dual = len(train) < h.shape[1]
-    gram = a @ a.T if dual else a.T @ a
-    rhs = target if dual else a.T @ target
+    if not dual and len(train) * h.shape[1] > 8_000_000:
+        mu = torch.zeros(h.shape[1], dtype=torch.float64)
+        for ids in train.split(1024):
+            mu += h[ids].double().sum(0) / len(train)
+        gram = torch.zeros(h.shape[1], h.shape[1], dtype=torch.float64)
+        rhs = torch.zeros(h.shape[1], len(classes), dtype=torch.float64)
+        offset = 0
+        for ids in train.split(1024):
+            block = h[ids].double() - mu
+            gram += block.T @ block
+            rhs += block.T @ target[offset : offset + len(ids)]
+            offset += len(ids)
+    else:
+        training = h[train].double()
+        mu = training.mean(0)
+        a = training - mu
+        gram = a @ a.T if dual else a.T @ a
+        rhs = target if dual else a.T @ target
     values, vectors = torch.linalg.eigh(gram)
     rhs = vectors.T @ rhs
+    if isinstance(h, FeatureView):
+        # Select alpha from validation rows first. Expensive quadratic/RBF
+        # features for the full graph then need only one prediction pass.
+        weights = []
+        for alpha in alphas:
+            weight = vectors @ (rhs / (values.clamp_min(0) + alpha)[:, None])
+            weights.append(a.T @ weight if dual else weight)
+        joined = torch.cat(weights, dim=1)
+        validation = torch.cat(
+            [(h[ids].double() - mu) @ joined for ids in val.split(1024)]
+        )
+        validation = validation.reshape(len(val), len(alphas), len(classes)) + bias
+        quality = []
+        for index in range(len(alphas)):
+            score = validation[:, index]
+            quality.append(
+                float(roc_auc_score(y[val], score[:, 1] - score[:, 0]))
+                if metric == "auc"
+                else float((classes[score.argmax(1)] == y[val]).double().mean())
+            )
+        chosen = max(range(len(alphas)), key=lambda index: quality[index])
+        weight = weights[chosen]
+        scores = torch.cat(
+            [(block.double() - mu) @ weight + bias for block in h.split(1024)]
+        )
+        info = dict(
+            validation_percent=100
+            * float((classes[scores[val].argmax(1)] == y[val]).double().mean()),
+            alpha=alphas[chosen],
+            dimensions=h.shape[1],
+        )
+        if metric == "auc":
+            info["validation_auc_percent"] = 100 * quality[chosen]
+        return scores.float(), info
     best = None
     for alpha in alphas:
         weight = vectors @ (rhs / (values.clamp_min(0) + alpha)[:, None])
@@ -67,14 +115,9 @@ def multiscale_ridge(parts, values, y, train, val, metric="accuracy"):
     best = None
     records = []
     for name, hops, weight, quadratic in specs:
-        features = torch.cat(parts[: hops + 1] + [values * weight], dim=1)
+        features = join_features(parts[: hops + 1], values, weight)
         if quadratic:
-            generator = torch.Generator().manual_seed(42)
-            x = F.normalize(features, dim=1)
-            dimension = 512
-            w = torch.randn(x.shape[1], dimension, generator=generator)
-            v = torch.randn(x.shape[1], dimension, generator=generator)
-            features = torch.cat((features, (x @ w) * (x @ v) / dimension**0.5), dim=1)
+            features = quadratic_features(features, 512)
         scores, info = ridge(features, y, train, val, metric=metric)
         value = info[
             "validation_auc_percent" if metric == "auc" else "validation_percent"
@@ -154,12 +197,8 @@ def enhanced_ridge(
     best_value = measure(scores)
     best_info = dict(variant=info["variant"], alpha=info["alpha"], diffusion=0.0)
     records = [dict(**best_info, validation_score_percent=best_value)]
-    features = torch.cat(parts[:5] + [0.5 * values], dim=1)
-    x = F.normalize(features, dim=1)
-    generator = torch.Generator().manual_seed(42)
-    w = torch.randn(x.shape[1], 2048, generator=generator)
-    v = torch.randn(x.shape[1], 2048, generator=generator)
-    expanded = torch.cat((features, (x @ w) * (x @ v) / 2048**0.5), dim=1)
+    features = join_features(parts[:5], values, 0.5)
+    expanded = quadratic_features(features, 2048)
     candidate, fit = ridge(expanded, y, train, val, metric=metric)
     score_value = measure(candidate)
     configuration = dict(variant="quadratic2048", alpha=fit["alpha"], diffusion=0.0)
@@ -168,9 +207,8 @@ def enhanced_ridge(
         scores, best_value, best_info = candidate, score_value, configuration
     if advanced:
         for gamma in (1.0, 4.0):
-            kernel = nystrom_features(features, gamma)
             candidate, fit = ridge(
-                torch.cat((features, kernel), dim=1), y, train, val, metric=metric
+                rbf_features(features, gamma), y, train, val, metric=metric
             )
             score_value = measure(candidate)
             configuration = dict(
@@ -229,7 +267,7 @@ def hard_negative_metrics(positive, negative):
         mrr_percent=100 * float((1 / rank).mean()),
         **{
             f"hits{k}_percent": 100 * float((rank <= k).double().mean())
-            for k in (10, 20, 100)
+            for k in (10, 20, 50, 100)
         },
     )
 

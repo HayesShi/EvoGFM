@@ -1,5 +1,5 @@
 {
-  "scope": "Best observed complete EvoGFM releases V4-V7; development summary, not a single configuration.",
+  "scope": "V4–V8 best observed complete EvoGFM releases; development summary, not a single configuration",
   "node_accuracy": {
     "cora": {
       "value": 79.60000038146973,
@@ -96,6 +96,97 @@
       "version": "V6",
       "source": "runs/advanced_v6/test_none.json",
       "metric": "accuracy_percent"
+    },
+    "blogcatalog": {
+      "value": 85.30339002609253,
+      "version": "V8",
+      "source": "runs\\v8\\nc_blogcatalog\\test_none.json",
+      "metric": "accuracy_percent",
+      "checkpoint": "runs/reference/best.pt"
+    },
+    "dblp": {
+      "value": 75.83352327346802,
+      "version": "V8",
+      "source": "runs\\v8\\nc_dblp\\test_none.json",
+      "metric": "accuracy_percent",
+      "checkpoint": "runs/reference/best.pt"
+    },
+    "photo": {
+      "value": 92.33644604682922,
+      "version": "V8",
+      "source": "runs\\v8\\nc_photo\\test_none.json",
+      "metric": "accuracy_percent",
+      "checkpoint": "runs/loso_photo/best.pt"
+    },
+    "pubmed": {
+      "value": 76.80000066757202,
+      "version": "V8",
+      "source": "runs\\v8\\nc_pubmed\\test_none.json",
+      "metric": "accuracy_percent",
+      "checkpoint": "runs/loso_pubmed/best.pt"
+    },
+    "air-brazil": {
+      "value": 42.307692766189575,
+      "version": "V8",
+      "source": "runs\\v8\\nc_small\\test_none.json",
+      "metric": "accuracy_percent",
+      "checkpoint": "runs/reference/best.pt"
+    },
+    "air-eu": {
+      "value": 48.124998807907104,
+      "version": "V8",
+      "source": "runs\\v8\\nc_small\\test_none.json",
+      "metric": "accuracy_percent",
+      "checkpoint": "runs/reference/best.pt"
+    },
+    "air-us": {
+      "value": 53.51351499557495,
+      "version": "V8",
+      "source": "runs\\v8\\nc_small\\test_none.json",
+      "metric": "accuracy_percent",
+      "checkpoint": "runs/reference/best.pt"
+    },
+    "wiki": {
+      "value": 74.05614852905273,
+      "version": "V8",
+      "source": "runs\\v8\\nc_small\\test_none.json",
+      "metric": "accuracy_percent",
+      "checkpoint": "runs/reference/best.pt"
+    },
+    "texas4": {
+      "value": 81.08108043670654,
+      "version": "V8",
+      "source": "runs\\v8\\nc_texas4\\test_none.json",
+      "metric": "accuracy_percent",
+      "checkpoint": "runs/loso_texas/best.pt"
+    },
+    "full-cora": {
+      "value": 59.96520519256592,
+      "version": "V8",
+      "source": "runs\\v8\\nc_full-cora\\test_none.json",
+      "metric": "accuracy_percent",
+      "checkpoint": "runs/reference/best.pt"
+    },
+    "coauthor-physics": {
+      "value": 92.6556944847107,
+      "version": "V8",
+      "source": "runs\\v8\\nc_coauthor-physics\\test_none.json",
+      "metric": "accuracy_percent",
+      "checkpoint": "runs/reference/best.pt"
+    },
+    "deezer": {
+      "value": 55.79633116722107,
+      "version": "V8",
+      "source": "runs\\v8\\nc_deezer\\test_none.json",
+      "metric": "accuracy_percent",
+      "checkpoint": "runs/reference/best.pt"
+    },
+    "lastfm-asia": {
+      "value": 82.13105797767639,
+      "version": "V8",
+      "source": "runs\\v8\\nc_lastfm-asia\\test_none.json",
+      "metric": "accuracy_percent",
+      "checkpoint": "runs/reference/best.pt"
     }
   },
   "node_auc": {
@@ -553,6 +644,270 @@
           }
         }
       ]
+    },
+    "RDT-B": {
+      "variant": "evogfm",
+      "accuracy_percent": 87.25,
+      "fold_std_percent": 2.3478713763747794,
+      "folds": [
+        {
+          "fold": 1,
+          "accuracy_percent": 86.0,
+          "parameters": {
+            "graphscale__weight": 1.0,
+            "svc__C": 10.0
+          }
+        },
+        {
+          "fold": 2,
+          "accuracy_percent": 87.0,
+          "parameters": {
+            "graphscale__weight": 1.0,
+            "svc__C": 10.0
+          }
+        },
+        {
+          "fold": 3,
+          "accuracy_percent": 90.0,
+          "parameters": {
+            "graphscale__weight": 1.0,
+            "svc__C": 10.0
+          }
+        },
+        {
+          "fold": 4,
+          "accuracy_percent": 87.0,
+          "parameters": {
+            "graphscale__weight": 1.0,
+            "svc__C": 10.0
+          }
+        },
+        {
+          "fold": 5,
+          "accuracy_percent": 90.0,
+          "parameters": {
+            "graphscale__weight": 1.0,
+            "svc__C": 10.0
+          }
+        },
+        {
+          "fold": 6,
+          "accuracy_percent": 81.5,
+          "parameters": {
+            "graphscale__weight": 1.0,
+            "svc__C": 1.0
+          }
+        },
+        {
+          "fold": 7,
+          "accuracy_percent": 89.5,
+          "parameters": {
+            "graphscale__weight": 1.0,
+            "svc__C": 10.0
+          }
+        },
+        {
+          "fold": 8,
+          "accuracy_percent": 87.5,
+          "parameters": {
+            "graphscale__weight": 1.0,
+            "svc__C": 10.0
+          }
+        },
+        {
+          "fold": 9,
+          "accuracy_percent": 87.0,
+          "parameters": {
+            "graphscale__weight": 10.0,
+            "svc__C": 10.0
+          }
+        },
+        {
+          "fold": 10,
+          "accuracy_percent": 87.0,
+          "parameters": {
+            "graphscale__weight": 1.0,
+            "svc__C": 10.0
+          }
+        }
+      ],
+      "fit_seconds": 49.929902100004256
+    },
+    "COLLAB": {
+      "variant": "evogfm",
+      "accuracy_percent": 80.74,
+      "fold_std_percent": 1.4340153416194659,
+      "folds": [
+        {
+          "fold": 1,
+          "accuracy_percent": 83.6,
+          "parameters": {
+            "graphscale__weight": 0.1,
+            "svc__C": 1.0
+          }
+        },
+        {
+          "fold": 2,
+          "accuracy_percent": 78.8,
+          "parameters": {
+            "graphscale__weight": 1.0,
+            "svc__C": 10.0
+          }
+        },
+        {
+          "fold": 3,
+          "accuracy_percent": 80.80000000000001,
+          "parameters": {
+            "graphscale__weight": 1.0,
+            "svc__C": 1.0
+          }
+        },
+        {
+          "fold": 4,
+          "accuracy_percent": 82.19999999999999,
+          "parameters": {
+            "graphscale__weight": 0.1,
+            "svc__C": 1.0
+          }
+        },
+        {
+          "fold": 5,
+          "accuracy_percent": 78.8,
+          "parameters": {
+            "graphscale__weight": 1.0,
+            "svc__C": 100.0
+          }
+        },
+        {
+          "fold": 6,
+          "accuracy_percent": 80.80000000000001,
+          "parameters": {
+            "graphscale__weight": 0.1,
+            "svc__C": 1.0
+          }
+        },
+        {
+          "fold": 7,
+          "accuracy_percent": 81.0,
+          "parameters": {
+            "graphscale__weight": 1.0,
+            "svc__C": 10.0
+          }
+        },
+        {
+          "fold": 8,
+          "accuracy_percent": 80.4,
+          "parameters": {
+            "graphscale__weight": 10.0,
+            "svc__C": 10.0
+          }
+        },
+        {
+          "fold": 9,
+          "accuracy_percent": 79.4,
+          "parameters": {
+            "graphscale__weight": 0.1,
+            "svc__C": 1.0
+          }
+        },
+        {
+          "fold": 10,
+          "accuracy_percent": 81.6,
+          "parameters": {
+            "graphscale__weight": 1.0,
+            "svc__C": 1.0
+          }
+        }
+      ],
+      "fit_seconds": 275.743075099992
+    },
+    "RDT-M5K": {
+      "variant": "evogfm",
+      "accuracy_percent": 53.4706613226453,
+      "fold_std_percent": 2.5573187299258118,
+      "folds": [
+        {
+          "fold": 1,
+          "accuracy_percent": 56.00000000000001,
+          "parameters": {
+            "graphscale__weight": 1.0,
+            "svc__C": 1.0
+          }
+        },
+        {
+          "fold": 2,
+          "accuracy_percent": 51.800000000000004,
+          "parameters": {
+            "graphscale__weight": 1.0,
+            "svc__C": 1.0
+          }
+        },
+        {
+          "fold": 3,
+          "accuracy_percent": 52.2,
+          "parameters": {
+            "graphscale__weight": 1.0,
+            "svc__C": 1.0
+          }
+        },
+        {
+          "fold": 4,
+          "accuracy_percent": 55.400000000000006,
+          "parameters": {
+            "graphscale__weight": 1.0,
+            "svc__C": 1.0
+          }
+        },
+        {
+          "fold": 5,
+          "accuracy_percent": 57.599999999999994,
+          "parameters": {
+            "graphscale__weight": 1.0,
+            "svc__C": 1.0
+          }
+        },
+        {
+          "fold": 6,
+          "accuracy_percent": 51.6,
+          "parameters": {
+            "graphscale__weight": 1.0,
+            "svc__C": 1.0
+          }
+        },
+        {
+          "fold": 7,
+          "accuracy_percent": 56.39999999999999,
+          "parameters": {
+            "graphscale__weight": 1.0,
+            "svc__C": 1.0
+          }
+        },
+        {
+          "fold": 8,
+          "accuracy_percent": 50.6,
+          "parameters": {
+            "graphscale__weight": 1.0,
+            "svc__C": 1.0
+          }
+        },
+        {
+          "fold": 9,
+          "accuracy_percent": 49.8,
+          "parameters": {
+            "graphscale__weight": 1.0,
+            "svc__C": 1.0
+          }
+        },
+        {
+          "fold": 10,
+          "accuracy_percent": 53.3066132264529,
+          "parameters": {
+            "graphscale__weight": 1.0,
+            "svc__C": 1.0
+          }
+        }
+      ],
+      "fit_seconds": 316.5914597999945
     }
   },
   "link": [
@@ -687,6 +1042,1558 @@
           "hits100_percent": 79.46768060836501
         }
       ]
+    }
+  },
+  "coverage": {
+    "updated": "2026-11-07T17:26:36",
+    "node": "29/31",
+    "public_lp": "4/7",
+    "heart_small": "3/3",
+    "heart_large": "1/4",
+    "graph": "8/8",
+    "missing_nodes": [
+      "Reddit",
+      "OGBN-Products"
+    ]
+  },
+  "v8": {
+    "nodes": [
+      {
+        "dataset": "blogcatalog",
+        "readout": "advanced",
+        "train_labels": 120,
+        "observed_edges": 171743,
+        "variant": "light_values",
+        "alpha": 0.01,
+        "diffusion": 0.0,
+        "validation_percent": 84.51536643026006,
+        "candidates": [
+          {
+            "variant": "light_values",
+            "alpha": 0.01,
+            "diffusion": 0.0,
+            "validation_score_percent": 84.51536643026006
+          },
+          {
+            "variant": "quadratic2048",
+            "alpha": 0.01,
+            "diffusion": 0.0,
+            "validation_score_percent": 82.78171788810087
+          },
+          {
+            "variant": "rbf1",
+            "alpha": 0.01,
+            "diffusion": 0.0,
+            "validation_score_percent": 83.92434988179669
+          },
+          {
+            "variant": "rbf4",
+            "alpha": 0.01,
+            "diffusion": 0.0,
+            "validation_score_percent": 83.92434988179669
+          },
+          {
+            "variant": "light_values",
+            "alpha": 0.01,
+            "diffusion": 0.5,
+            "validation_score_percent": 82.46650906225375
+          },
+          {
+            "variant": "light_values",
+            "alpha": 0.01,
+            "diffusion": 0.9,
+            "validation_score_percent": 66.58786446020488
+          },
+          {
+            "variant": "light_values",
+            "alpha": 0.01,
+            "diffusion": 0.0,
+            "correction": true,
+            "validation_score_percent": 84.51536643026006
+          },
+          {
+            "variant": "light_values",
+            "alpha": 0.01,
+            "diffusion": 0.5,
+            "correction": true,
+            "validation_score_percent": 82.46650906225375
+          },
+          {
+            "variant": "light_values",
+            "alpha": 0.01,
+            "diffusion": 0.9,
+            "correction": true,
+            "validation_score_percent": 66.58786446020488
+          }
+        ],
+        "split": "test",
+        "accuracy_percent": 85.30339002609253,
+        "seconds": 101.75736390000384,
+        "checkpoint": "runs/reference/best.pt",
+        "source": "runs\\v8\\nc_blogcatalog\\test_none.json"
+      },
+      {
+        "dataset": "coauthor-physics",
+        "readout": "advanced",
+        "train_labels": 100,
+        "observed_edges": 247962,
+        "variant": "multiscale",
+        "alpha": 0.1,
+        "diffusion": 0.0,
+        "validation_percent": 92.50407071411956,
+        "candidates": [
+          {
+            "variant": "multiscale",
+            "alpha": 0.1,
+            "diffusion": 0.0,
+            "validation_score_percent": 92.50407071411956
+          },
+          {
+            "variant": "quadratic2048",
+            "alpha": 1.0,
+            "diffusion": 0.0,
+            "validation_score_percent": 92.50407071411956
+          },
+          {
+            "variant": "rbf1",
+            "alpha": 0.1,
+            "diffusion": 0.0,
+            "validation_score_percent": 92.53314724354502
+          },
+          {
+            "variant": "rbf4",
+            "alpha": 0.1,
+            "diffusion": 0.0,
+            "validation_score_percent": 92.50988602000464
+          },
+          {
+            "variant": "multiscale",
+            "alpha": 0.1,
+            "diffusion": 0.5,
+            "validation_score_percent": 92.45754826703885
+          },
+          {
+            "variant": "multiscale",
+            "alpha": 0.1,
+            "diffusion": 0.9,
+            "validation_score_percent": 91.61432891370086
+          },
+          {
+            "variant": "multiscale",
+            "alpha": 0.1,
+            "diffusion": 0.0,
+            "correction": true,
+            "validation_score_percent": 92.50407071411956
+          },
+          {
+            "variant": "multiscale",
+            "alpha": 0.1,
+            "diffusion": 0.5,
+            "correction": true,
+            "validation_score_percent": 92.45754826703885
+          },
+          {
+            "variant": "multiscale",
+            "alpha": 0.1,
+            "diffusion": 0.9,
+            "correction": true,
+            "validation_score_percent": 91.61432891370086
+          }
+        ],
+        "split": "test",
+        "accuracy_percent": 92.6556944847107,
+        "seconds": 315.6561084999994,
+        "checkpoint": "runs/reference/best.pt",
+        "source": "runs\\v8\\nc_coauthor-physics\\test_none.json"
+      },
+      {
+        "dataset": "dblp",
+        "readout": "advanced",
+        "train_labels": 80,
+        "observed_edges": 52867,
+        "variant": "multiscale",
+        "alpha": 1.0,
+        "diffusion": 0.9,
+        "validation_percent": 75.17577682014061,
+        "candidates": [
+          {
+            "variant": "multiscale",
+            "alpha": 1.0,
+            "diffusion": 0.0,
+            "validation_score_percent": 73.04377409843502
+          },
+          {
+            "variant": "quadratic2048",
+            "alpha": 1.0,
+            "diffusion": 0.0,
+            "validation_score_percent": 73.10047629848037
+          },
+          {
+            "variant": "rbf1",
+            "alpha": 1.0,
+            "diffusion": 0.0,
+            "validation_score_percent": 73.1344976185076
+          },
+          {
+            "variant": "rbf4",
+            "alpha": 1.0,
+            "diffusion": 0.0,
+            "validation_score_percent": 73.05511453844409
+          },
+          {
+            "variant": "multiscale",
+            "alpha": 1.0,
+            "diffusion": 0.5,
+            "validation_score_percent": 74.22317985937855
+          },
+          {
+            "variant": "multiscale",
+            "alpha": 1.0,
+            "diffusion": 0.9,
+            "validation_score_percent": 75.17577682014061
+          },
+          {
+            "variant": "multiscale",
+            "alpha": 1.0,
+            "diffusion": 0.0,
+            "correction": true,
+            "validation_score_percent": 73.04377409843502
+          },
+          {
+            "variant": "multiscale",
+            "alpha": 1.0,
+            "diffusion": 0.5,
+            "correction": true,
+            "validation_score_percent": 74.22317985937855
+          },
+          {
+            "variant": "multiscale",
+            "alpha": 1.0,
+            "diffusion": 0.9,
+            "correction": true,
+            "validation_score_percent": 75.17577682014061
+          }
+        ],
+        "split": "test",
+        "accuracy_percent": 75.83352327346802,
+        "seconds": 176.35238349999418,
+        "checkpoint": "runs/reference/best.pt",
+        "source": "runs\\v8\\nc_dblp\\test_none.json"
+      },
+      {
+        "dataset": "deezer",
+        "readout": "advanced",
+        "train_labels": 40,
+        "observed_edges": 92752,
+        "variant": "multiscale",
+        "alpha": 100.0,
+        "diffusion": 0.0,
+        "validation_percent": 55.701133144475925,
+        "candidates": [
+          {
+            "variant": "multiscale",
+            "alpha": 100.0,
+            "diffusion": 0.0,
+            "validation_score_percent": 55.701133144475925
+          },
+          {
+            "variant": "quadratic2048",
+            "alpha": 100.0,
+            "diffusion": 0.0,
+            "validation_score_percent": 55.68696883852691
+          },
+          {
+            "variant": "rbf1",
+            "alpha": 100.0,
+            "diffusion": 0.0,
+            "validation_score_percent": 55.69405099150142
+          },
+          {
+            "variant": "rbf4",
+            "alpha": 100.0,
+            "diffusion": 0.0,
+            "validation_score_percent": 55.701133144475925
+          },
+          {
+            "variant": "multiscale",
+            "alpha": 100.0,
+            "diffusion": 0.5,
+            "validation_score_percent": 55.701133144475925
+          },
+          {
+            "variant": "multiscale",
+            "alpha": 100.0,
+            "diffusion": 0.9,
+            "validation_score_percent": 55.68696883852691
+          },
+          {
+            "variant": "multiscale",
+            "alpha": 100.0,
+            "diffusion": 0.0,
+            "correction": true,
+            "validation_score_percent": 55.70821529745042
+          },
+          {
+            "variant": "multiscale",
+            "alpha": 100.0,
+            "diffusion": 0.5,
+            "correction": true,
+            "validation_score_percent": 55.69405099150142
+          },
+          {
+            "variant": "multiscale",
+            "alpha": 100.0,
+            "diffusion": 0.9,
+            "correction": true,
+            "validation_score_percent": 55.70821529745042
+          }
+        ],
+        "split": "test",
+        "accuracy_percent": 55.79633116722107,
+        "seconds": 3.1042591000004904,
+        "checkpoint": "runs/reference/best.pt",
+        "source": "runs\\v8\\nc_deezer\\test_none.json"
+      },
+      {
+        "dataset": "full-cora",
+        "readout": "advanced",
+        "train_labels": 1400,
+        "observed_edges": 63421,
+        "variant": "light_values",
+        "alpha": 1.0,
+        "diffusion": 0.0,
+        "correction": true,
+        "validation_percent": 60.49369290996085,
+        "candidates": [
+          {
+            "variant": "light_values",
+            "alpha": 1.0,
+            "diffusion": 0.0,
+            "validation_score_percent": 60.27620704654198
+          },
+          {
+            "variant": "quadratic2048",
+            "alpha": 1.0,
+            "diffusion": 0.0,
+            "validation_score_percent": 59.438886472379295
+          },
+          {
+            "variant": "rbf1",
+            "alpha": 1.0,
+            "diffusion": 0.0,
+            "validation_score_percent": 60.10221835580687
+          },
+          {
+            "variant": "rbf4",
+            "alpha": 1.0,
+            "diffusion": 0.0,
+            "validation_score_percent": 60.12396694214877
+          },
+          {
+            "variant": "light_values",
+            "alpha": 1.0,
+            "diffusion": 0.5,
+            "validation_score_percent": 59.71074380165289
+          },
+          {
+            "variant": "light_values",
+            "alpha": 1.0,
+            "diffusion": 0.9,
+            "validation_score_percent": 55.6002609830361
+          },
+          {
+            "variant": "light_values",
+            "alpha": 1.0,
+            "diffusion": 0.0,
+            "correction": true,
+            "validation_score_percent": 60.49369290996085
+          },
+          {
+            "variant": "light_values",
+            "alpha": 1.0,
+            "diffusion": 0.5,
+            "correction": true,
+            "validation_score_percent": 59.36276642018269
+          },
+          {
+            "variant": "light_values",
+            "alpha": 1.0,
+            "diffusion": 0.9,
+            "correction": true,
+            "validation_score_percent": 55.49151805132666
+          }
+        ],
+        "split": "test",
+        "accuracy_percent": 59.96520519256592,
+        "seconds": 2154.59269830001,
+        "checkpoint": "runs/reference/best.pt",
+        "source": "runs\\v8\\nc_full-cora\\test_none.json"
+      },
+      {
+        "dataset": "lastfm-asia",
+        "readout": "advanced",
+        "train_labels": 360,
+        "observed_edges": 27806,
+        "variant": "quadratic",
+        "alpha": 1.0,
+        "diffusion": 0.5,
+        "validation_percent": 81.05726872246696,
+        "candidates": [
+          {
+            "variant": "quadratic",
+            "alpha": 1.0,
+            "diffusion": 0.0,
+            "validation_score_percent": 80.83700440528634
+          },
+          {
+            "variant": "quadratic2048",
+            "alpha": 1.0,
+            "diffusion": 0.0,
+            "validation_score_percent": 80.8920704845815
+          },
+          {
+            "variant": "rbf1",
+            "alpha": 1.0,
+            "diffusion": 0.0,
+            "validation_score_percent": 80.69933920704845
+          },
+          {
+            "variant": "rbf4",
+            "alpha": 1.0,
+            "diffusion": 0.0,
+            "validation_score_percent": 80.69933920704845
+          },
+          {
+            "variant": "quadratic",
+            "alpha": 1.0,
+            "diffusion": 0.5,
+            "validation_score_percent": 81.05726872246696
+          },
+          {
+            "variant": "quadratic",
+            "alpha": 1.0,
+            "diffusion": 0.9,
+            "validation_score_percent": 80.67180616740089
+          },
+          {
+            "variant": "quadratic",
+            "alpha": 1.0,
+            "diffusion": 0.0,
+            "correction": true,
+            "validation_score_percent": 80.86453744493393
+          },
+          {
+            "variant": "quadratic",
+            "alpha": 1.0,
+            "diffusion": 0.5,
+            "correction": true,
+            "validation_score_percent": 81.05726872246696
+          },
+          {
+            "variant": "quadratic",
+            "alpha": 1.0,
+            "diffusion": 0.9,
+            "correction": true,
+            "validation_score_percent": 80.67180616740089
+          }
+        ],
+        "split": "test",
+        "accuracy_percent": 82.13105797767639,
+        "seconds": 1.1543343999946956,
+        "checkpoint": "runs/reference/best.pt",
+        "source": "runs\\v8\\nc_lastfm-asia\\test_none.json"
+      },
+      {
+        "dataset": "photo",
+        "readout": "advanced",
+        "train_labels": 160,
+        "observed_edges": 119081,
+        "variant": "light_values",
+        "alpha": 0.1,
+        "diffusion": 0.5,
+        "validation_percent": 92.28304405874499,
+        "candidates": [
+          {
+            "variant": "light_values",
+            "alpha": 0.1,
+            "diffusion": 0.0,
+            "validation_score_percent": 91.96261682242991
+          },
+          {
+            "variant": "quadratic2048",
+            "alpha": 1.0,
+            "diffusion": 0.0,
+            "validation_score_percent": 91.85580774365822
+          },
+          {
+            "variant": "rbf1",
+            "alpha": 0.1,
+            "diffusion": 0.0,
+            "validation_score_percent": 91.61548731642189
+          },
+          {
+            "variant": "rbf4",
+            "alpha": 0.1,
+            "diffusion": 0.0,
+            "validation_score_percent": 91.64218958611482
+          },
+          {
+            "variant": "light_values",
+            "alpha": 0.1,
+            "diffusion": 0.5,
+            "validation_score_percent": 92.28304405874499
+          },
+          {
+            "variant": "light_values",
+            "alpha": 0.1,
+            "diffusion": 0.9,
+            "validation_score_percent": 89.5060080106809
+          },
+          {
+            "variant": "light_values",
+            "alpha": 0.1,
+            "diffusion": 0.0,
+            "correction": true,
+            "validation_score_percent": 91.93591455273699
+          },
+          {
+            "variant": "light_values",
+            "alpha": 0.1,
+            "diffusion": 0.5,
+            "correction": true,
+            "validation_score_percent": 92.28304405874499
+          },
+          {
+            "variant": "light_values",
+            "alpha": 0.1,
+            "diffusion": 0.9,
+            "correction": true,
+            "validation_score_percent": 89.5060080106809
+          }
+        ],
+        "split": "test",
+        "accuracy_percent": 92.33644604682922,
+        "seconds": 7.196062000002712,
+        "checkpoint": "runs/loso_photo/best.pt",
+        "source": "runs\\v8\\nc_photo\\test_none.json"
+      },
+      {
+        "dataset": "pubmed",
+        "readout": "advanced",
+        "train_labels": 60,
+        "observed_edges": 44324,
+        "variant": "light_values",
+        "alpha": 1.0,
+        "diffusion": 0.0,
+        "validation_percent": 77.60000000000001,
+        "candidates": [
+          {
+            "variant": "light_values",
+            "alpha": 1.0,
+            "diffusion": 0.0,
+            "validation_score_percent": 77.60000000000001
+          },
+          {
+            "variant": "quadratic2048",
+            "alpha": 10.0,
+            "diffusion": 0.0,
+            "validation_score_percent": 76.0
+          },
+          {
+            "variant": "rbf1",
+            "alpha": 10.0,
+            "diffusion": 0.0,
+            "validation_score_percent": 76.0
+          },
+          {
+            "variant": "rbf4",
+            "alpha": 10.0,
+            "diffusion": 0.0,
+            "validation_score_percent": 75.8
+          },
+          {
+            "variant": "light_values",
+            "alpha": 1.0,
+            "diffusion": 0.5,
+            "validation_score_percent": 76.8
+          },
+          {
+            "variant": "light_values",
+            "alpha": 1.0,
+            "diffusion": 0.9,
+            "validation_score_percent": 75.4
+          },
+          {
+            "variant": "light_values",
+            "alpha": 1.0,
+            "diffusion": 0.0,
+            "correction": true,
+            "validation_score_percent": 77.60000000000001
+          },
+          {
+            "variant": "light_values",
+            "alpha": 1.0,
+            "diffusion": 0.5,
+            "correction": true,
+            "validation_score_percent": 76.8
+          },
+          {
+            "variant": "light_values",
+            "alpha": 1.0,
+            "diffusion": 0.9,
+            "correction": true,
+            "validation_score_percent": 75.4
+          }
+        ],
+        "split": "test",
+        "accuracy_percent": 76.80000066757202,
+        "seconds": 11.063398099999176,
+        "checkpoint": "runs/loso_pubmed/best.pt",
+        "source": "runs\\v8\\nc_pubmed\\test_none.json"
+      },
+      {
+        "dataset": "air-brazil",
+        "readout": "advanced",
+        "train_labels": 80,
+        "observed_edges": 1003,
+        "variant": "current",
+        "alpha": 100.0,
+        "diffusion": 0.0,
+        "validation_percent": 48.0,
+        "candidates": [
+          {
+            "variant": "current",
+            "alpha": 100.0,
+            "diffusion": 0.0,
+            "validation_score_percent": 48.0
+          },
+          {
+            "variant": "quadratic2048",
+            "alpha": 100.0,
+            "diffusion": 0.0,
+            "validation_score_percent": 44.0
+          },
+          {
+            "variant": "rbf1",
+            "alpha": 10.0,
+            "diffusion": 0.0,
+            "validation_score_percent": 36.0
+          },
+          {
+            "variant": "rbf4",
+            "alpha": 10.0,
+            "diffusion": 0.0,
+            "validation_score_percent": 36.0
+          },
+          {
+            "variant": "current",
+            "alpha": 100.0,
+            "diffusion": 0.5,
+            "validation_score_percent": 24.0
+          },
+          {
+            "variant": "current",
+            "alpha": 100.0,
+            "diffusion": 0.9,
+            "validation_score_percent": 24.0
+          },
+          {
+            "variant": "current",
+            "alpha": 100.0,
+            "diffusion": 0.0,
+            "correction": true,
+            "validation_score_percent": 24.0
+          },
+          {
+            "variant": "current",
+            "alpha": 100.0,
+            "diffusion": 0.5,
+            "correction": true,
+            "validation_score_percent": 24.0
+          },
+          {
+            "variant": "current",
+            "alpha": 100.0,
+            "diffusion": 0.9,
+            "correction": true,
+            "validation_score_percent": 24.0
+          }
+        ],
+        "split": "test",
+        "accuracy_percent": 42.307692766189575,
+        "seconds": 0.13383340000291355,
+        "checkpoint": "runs/reference/best.pt",
+        "source": "runs\\v8\\nc_small\\test_none.json"
+      },
+      {
+        "dataset": "air-eu",
+        "readout": "advanced",
+        "train_labels": 80,
+        "observed_edges": 5993,
+        "variant": "current",
+        "alpha": 10.0,
+        "diffusion": 0.0,
+        "validation_percent": 49.056603773584904,
+        "candidates": [
+          {
+            "variant": "current",
+            "alpha": 10.0,
+            "diffusion": 0.0,
+            "validation_score_percent": 49.056603773584904
+          },
+          {
+            "variant": "quadratic2048",
+            "alpha": 0.01,
+            "diffusion": 0.0,
+            "validation_score_percent": 47.16981132075472
+          },
+          {
+            "variant": "rbf1",
+            "alpha": 1.0,
+            "diffusion": 0.0,
+            "validation_score_percent": 47.16981132075472
+          },
+          {
+            "variant": "rbf4",
+            "alpha": 1.0,
+            "diffusion": 0.0,
+            "validation_score_percent": 45.911949685534594
+          },
+          {
+            "variant": "current",
+            "alpha": 10.0,
+            "diffusion": 0.5,
+            "validation_score_percent": 35.84905660377358
+          },
+          {
+            "variant": "current",
+            "alpha": 10.0,
+            "diffusion": 0.9,
+            "validation_score_percent": 28.930817610062892
+          },
+          {
+            "variant": "current",
+            "alpha": 10.0,
+            "diffusion": 0.0,
+            "correction": true,
+            "validation_score_percent": 48.42767295597484
+          },
+          {
+            "variant": "current",
+            "alpha": 10.0,
+            "diffusion": 0.5,
+            "correction": true,
+            "validation_score_percent": 33.33333333333333
+          },
+          {
+            "variant": "current",
+            "alpha": 10.0,
+            "diffusion": 0.9,
+            "correction": true,
+            "validation_score_percent": 28.930817610062892
+          }
+        ],
+        "split": "test",
+        "accuracy_percent": 48.124998807907104,
+        "seconds": 0.32661230000667274,
+        "checkpoint": "runs/reference/best.pt",
+        "source": "runs\\v8\\nc_small\\test_none.json"
+      },
+      {
+        "dataset": "air-us",
+        "readout": "advanced",
+        "train_labels": 80,
+        "observed_edges": 13599,
+        "variant": "multiscale",
+        "alpha": 1.0,
+        "diffusion": 0.0,
+        "validation_percent": 53.51351351351351,
+        "candidates": [
+          {
+            "variant": "multiscale",
+            "alpha": 1.0,
+            "diffusion": 0.0,
+            "validation_score_percent": 53.51351351351351
+          },
+          {
+            "variant": "quadratic2048",
+            "alpha": 10.0,
+            "diffusion": 0.0,
+            "validation_score_percent": 52.61261261261261
+          },
+          {
+            "variant": "rbf1",
+            "alpha": 1.0,
+            "diffusion": 0.0,
+            "validation_score_percent": 53.51351351351351
+          },
+          {
+            "variant": "rbf4",
+            "alpha": 0.01,
+            "diffusion": 0.0,
+            "validation_score_percent": 52.43243243243243
+          },
+          {
+            "variant": "multiscale",
+            "alpha": 1.0,
+            "diffusion": 0.5,
+            "validation_score_percent": 49.549549549549546
+          },
+          {
+            "variant": "multiscale",
+            "alpha": 1.0,
+            "diffusion": 0.9,
+            "validation_score_percent": 36.3963963963964
+          },
+          {
+            "variant": "multiscale",
+            "alpha": 1.0,
+            "diffusion": 0.0,
+            "correction": true,
+            "validation_score_percent": 53.333333333333336
+          },
+          {
+            "variant": "multiscale",
+            "alpha": 1.0,
+            "diffusion": 0.5,
+            "correction": true,
+            "validation_score_percent": 49.549549549549546
+          },
+          {
+            "variant": "multiscale",
+            "alpha": 1.0,
+            "diffusion": 0.9,
+            "correction": true,
+            "validation_score_percent": 36.3963963963964
+          }
+        ],
+        "split": "test",
+        "accuracy_percent": 53.51351499557495,
+        "seconds": 8.45115330000408,
+        "checkpoint": "runs/reference/best.pt",
+        "source": "runs\\v8\\nc_small\\test_none.json"
+      },
+      {
+        "dataset": "wiki",
+        "readout": "advanced",
+        "train_labels": 340,
+        "observed_edges": 11596,
+        "variant": "light_values",
+        "alpha": 0.1,
+        "diffusion": 0.0,
+        "validation_percent": 73.93410852713178,
+        "candidates": [
+          {
+            "variant": "light_values",
+            "alpha": 0.1,
+            "diffusion": 0.0,
+            "validation_score_percent": 73.93410852713178
+          },
+          {
+            "variant": "quadratic2048",
+            "alpha": 0.01,
+            "diffusion": 0.0,
+            "validation_score_percent": 72.57751937984496
+          },
+          {
+            "variant": "rbf1",
+            "alpha": 0.01,
+            "diffusion": 0.0,
+            "validation_score_percent": 72.57751937984496
+          },
+          {
+            "variant": "rbf4",
+            "alpha": 0.01,
+            "diffusion": 0.0,
+            "validation_score_percent": 72.48062015503875
+          },
+          {
+            "variant": "light_values",
+            "alpha": 0.1,
+            "diffusion": 0.5,
+            "validation_score_percent": 72.86821705426357
+          },
+          {
+            "variant": "light_values",
+            "alpha": 0.1,
+            "diffusion": 0.9,
+            "validation_score_percent": 67.34496124031007
+          },
+          {
+            "variant": "light_values",
+            "alpha": 0.1,
+            "diffusion": 0.0,
+            "correction": true,
+            "validation_score_percent": 73.93410852713178
+          },
+          {
+            "variant": "light_values",
+            "alpha": 0.1,
+            "diffusion": 0.5,
+            "correction": true,
+            "validation_score_percent": 72.77131782945736
+          },
+          {
+            "variant": "light_values",
+            "alpha": 0.1,
+            "diffusion": 0.9,
+            "correction": true,
+            "validation_score_percent": 67.34496124031007
+          }
+        ],
+        "split": "test",
+        "accuracy_percent": 74.05614852905273,
+        "seconds": 19.565369599993574,
+        "checkpoint": "runs/reference/best.pt",
+        "source": "runs\\v8\\nc_small\\test_none.json"
+      },
+      {
+        "dataset": "texas4",
+        "readout": "advanced",
+        "train_labels": 87,
+        "observed_edges": 279,
+        "variant": "light_values",
+        "alpha": 0.01,
+        "diffusion": 0.0,
+        "validation_percent": 82.75862068965517,
+        "candidates": [
+          {
+            "variant": "light_values",
+            "alpha": 0.01,
+            "diffusion": 0.0,
+            "validation_score_percent": 82.75862068965517
+          },
+          {
+            "variant": "quadratic2048",
+            "alpha": 0.01,
+            "diffusion": 0.0,
+            "validation_score_percent": 82.75862068965517
+          },
+          {
+            "variant": "rbf1",
+            "alpha": 0.01,
+            "diffusion": 0.0,
+            "validation_score_percent": 81.03448275862068
+          },
+          {
+            "variant": "rbf4",
+            "alpha": 0.01,
+            "diffusion": 0.0,
+            "validation_score_percent": 81.03448275862068
+          },
+          {
+            "variant": "light_values",
+            "alpha": 0.01,
+            "diffusion": 0.5,
+            "validation_score_percent": 68.96551724137932
+          },
+          {
+            "variant": "light_values",
+            "alpha": 0.01,
+            "diffusion": 0.9,
+            "validation_score_percent": 44.827586206896555
+          },
+          {
+            "variant": "light_values",
+            "alpha": 0.01,
+            "diffusion": 0.0,
+            "correction": true,
+            "validation_score_percent": 82.75862068965517
+          },
+          {
+            "variant": "light_values",
+            "alpha": 0.01,
+            "diffusion": 0.5,
+            "correction": true,
+            "validation_score_percent": 68.96551724137932
+          },
+          {
+            "variant": "light_values",
+            "alpha": 0.01,
+            "diffusion": 0.9,
+            "correction": true,
+            "validation_score_percent": 44.827586206896555
+          }
+        ],
+        "split": "test",
+        "accuracy_percent": 81.08108043670654,
+        "seconds": 0.5272129999939352,
+        "checkpoint": "runs/loso_texas/best.pt",
+        "source": "runs\\v8\\nc_texas4\\test_none.json"
+      }
+    ],
+    "graphs": [
+      {
+        "seed": 42,
+        "dataset": "COLLAB",
+        "graphs": 5000,
+        "source_epoch": 21,
+        "shots_per_class": 0,
+        "node_features": "64 degree indicators; degree capped at 63; no original node attributes",
+        "protocol": "nested stratified 10-fold; inner 5-fold C selection; fold standard deviation",
+        "rows": [
+          {
+            "variant": "statistics",
+            "accuracy_percent": 80.53999999999999,
+            "fold_std_percent": 1.3595587519485839,
+            "folds": [
+              {
+                "fold": 1,
+                "accuracy_percent": 83.6,
+                "parameters": {
+                  "svc__C": 1.0
+                }
+              },
+              {
+                "fold": 2,
+                "accuracy_percent": 79.80000000000001,
+                "parameters": {
+                  "svc__C": 1.0
+                }
+              },
+              {
+                "fold": 3,
+                "accuracy_percent": 79.4,
+                "parameters": {
+                  "svc__C": 1.0
+                }
+              },
+              {
+                "fold": 4,
+                "accuracy_percent": 82.0,
+                "parameters": {
+                  "svc__C": 1.0
+                }
+              },
+              {
+                "fold": 5,
+                "accuracy_percent": 79.0,
+                "parameters": {
+                  "svc__C": 1.0
+                }
+              },
+              {
+                "fold": 6,
+                "accuracy_percent": 80.60000000000001,
+                "parameters": {
+                  "svc__C": 1.0
+                }
+              },
+              {
+                "fold": 7,
+                "accuracy_percent": 80.2,
+                "parameters": {
+                  "svc__C": 10.0
+                }
+              },
+              {
+                "fold": 8,
+                "accuracy_percent": 80.2,
+                "parameters": {
+                  "svc__C": 1.0
+                }
+              },
+              {
+                "fold": 9,
+                "accuracy_percent": 79.2,
+                "parameters": {
+                  "svc__C": 1.0
+                }
+              },
+              {
+                "fold": 10,
+                "accuracy_percent": 81.39999999999999,
+                "parameters": {
+                  "svc__C": 1.0
+                }
+              }
+            ],
+            "fit_seconds": 1453.478267700004
+          },
+          {
+            "variant": "evogfm",
+            "accuracy_percent": 80.74,
+            "fold_std_percent": 1.4340153416194659,
+            "folds": [
+              {
+                "fold": 1,
+                "accuracy_percent": 83.6,
+                "parameters": {
+                  "graphscale__weight": 0.1,
+                  "svc__C": 1.0
+                }
+              },
+              {
+                "fold": 2,
+                "accuracy_percent": 78.8,
+                "parameters": {
+                  "graphscale__weight": 1.0,
+                  "svc__C": 10.0
+                }
+              },
+              {
+                "fold": 3,
+                "accuracy_percent": 80.80000000000001,
+                "parameters": {
+                  "graphscale__weight": 1.0,
+                  "svc__C": 1.0
+                }
+              },
+              {
+                "fold": 4,
+                "accuracy_percent": 82.19999999999999,
+                "parameters": {
+                  "graphscale__weight": 0.1,
+                  "svc__C": 1.0
+                }
+              },
+              {
+                "fold": 5,
+                "accuracy_percent": 78.8,
+                "parameters": {
+                  "graphscale__weight": 1.0,
+                  "svc__C": 100.0
+                }
+              },
+              {
+                "fold": 6,
+                "accuracy_percent": 80.80000000000001,
+                "parameters": {
+                  "graphscale__weight": 0.1,
+                  "svc__C": 1.0
+                }
+              },
+              {
+                "fold": 7,
+                "accuracy_percent": 81.0,
+                "parameters": {
+                  "graphscale__weight": 1.0,
+                  "svc__C": 10.0
+                }
+              },
+              {
+                "fold": 8,
+                "accuracy_percent": 80.4,
+                "parameters": {
+                  "graphscale__weight": 10.0,
+                  "svc__C": 10.0
+                }
+              },
+              {
+                "fold": 9,
+                "accuracy_percent": 79.4,
+                "parameters": {
+                  "graphscale__weight": 0.1,
+                  "svc__C": 1.0
+                }
+              },
+              {
+                "fold": 10,
+                "accuracy_percent": 81.6,
+                "parameters": {
+                  "graphscale__weight": 1.0,
+                  "svc__C": 1.0
+                }
+              }
+            ],
+            "fit_seconds": 275.743075099992
+          }
+        ]
+      },
+      {
+        "seed": 42,
+        "dataset": "REDDIT-BINARY",
+        "graphs": 2000,
+        "source_epoch": 21,
+        "shots_per_class": 0,
+        "node_features": "64 degree indicators; degree capped at 63; no original node attributes",
+        "protocol": "nested stratified 10-fold; inner 5-fold C selection; fold standard deviation",
+        "rows": [
+          {
+            "variant": "statistics",
+            "accuracy_percent": 80.5,
+            "fold_std_percent": 2.1908902300206643,
+            "folds": [
+              {
+                "fold": 1,
+                "accuracy_percent": 78.5,
+                "parameters": {
+                  "svc__C": 10.0
+                }
+              },
+              {
+                "fold": 2,
+                "accuracy_percent": 81.5,
+                "parameters": {
+                  "svc__C": 10.0
+                }
+              },
+              {
+                "fold": 3,
+                "accuracy_percent": 78.0,
+                "parameters": {
+                  "svc__C": 10.0
+                }
+              },
+              {
+                "fold": 4,
+                "accuracy_percent": 80.0,
+                "parameters": {
+                  "svc__C": 10.0
+                }
+              },
+              {
+                "fold": 5,
+                "accuracy_percent": 83.0,
+                "parameters": {
+                  "svc__C": 100.0
+                }
+              },
+              {
+                "fold": 6,
+                "accuracy_percent": 76.5,
+                "parameters": {
+                  "svc__C": 10.0
+                }
+              },
+              {
+                "fold": 7,
+                "accuracy_percent": 81.5,
+                "parameters": {
+                  "svc__C": 100.0
+                }
+              },
+              {
+                "fold": 8,
+                "accuracy_percent": 81.5,
+                "parameters": {
+                  "svc__C": 10.0
+                }
+              },
+              {
+                "fold": 9,
+                "accuracy_percent": 84.0,
+                "parameters": {
+                  "svc__C": 10.0
+                }
+              },
+              {
+                "fold": 10,
+                "accuracy_percent": 80.5,
+                "parameters": {
+                  "svc__C": 10.0
+                }
+              }
+            ],
+            "fit_seconds": 42.64377530000638
+          },
+          {
+            "variant": "evogfm",
+            "accuracy_percent": 87.25,
+            "fold_std_percent": 2.3478713763747794,
+            "folds": [
+              {
+                "fold": 1,
+                "accuracy_percent": 86.0,
+                "parameters": {
+                  "graphscale__weight": 1.0,
+                  "svc__C": 10.0
+                }
+              },
+              {
+                "fold": 2,
+                "accuracy_percent": 87.0,
+                "parameters": {
+                  "graphscale__weight": 1.0,
+                  "svc__C": 10.0
+                }
+              },
+              {
+                "fold": 3,
+                "accuracy_percent": 90.0,
+                "parameters": {
+                  "graphscale__weight": 1.0,
+                  "svc__C": 10.0
+                }
+              },
+              {
+                "fold": 4,
+                "accuracy_percent": 87.0,
+                "parameters": {
+                  "graphscale__weight": 1.0,
+                  "svc__C": 10.0
+                }
+              },
+              {
+                "fold": 5,
+                "accuracy_percent": 90.0,
+                "parameters": {
+                  "graphscale__weight": 1.0,
+                  "svc__C": 10.0
+                }
+              },
+              {
+                "fold": 6,
+                "accuracy_percent": 81.5,
+                "parameters": {
+                  "graphscale__weight": 1.0,
+                  "svc__C": 1.0
+                }
+              },
+              {
+                "fold": 7,
+                "accuracy_percent": 89.5,
+                "parameters": {
+                  "graphscale__weight": 1.0,
+                  "svc__C": 10.0
+                }
+              },
+              {
+                "fold": 8,
+                "accuracy_percent": 87.5,
+                "parameters": {
+                  "graphscale__weight": 1.0,
+                  "svc__C": 10.0
+                }
+              },
+              {
+                "fold": 9,
+                "accuracy_percent": 87.0,
+                "parameters": {
+                  "graphscale__weight": 10.0,
+                  "svc__C": 10.0
+                }
+              },
+              {
+                "fold": 10,
+                "accuracy_percent": 87.0,
+                "parameters": {
+                  "graphscale__weight": 1.0,
+                  "svc__C": 10.0
+                }
+              }
+            ],
+            "fit_seconds": 49.929902100004256
+          }
+        ]
+      },
+      {
+        "seed": 42,
+        "dataset": "REDDIT-MULTI-5K",
+        "graphs": 4999,
+        "source_epoch": 21,
+        "shots_per_class": 0,
+        "node_features": "64 degree indicators; degree capped at 63; no original node attributes",
+        "protocol": "nested stratified 10-fold; inner 5-fold C selection; fold standard deviation",
+        "rows": [
+          {
+            "variant": "statistics",
+            "accuracy_percent": 51.0301002004008,
+            "fold_std_percent": 2.7553573049490776,
+            "folds": [
+              {
+                "fold": 1,
+                "accuracy_percent": 56.00000000000001,
+                "parameters": {
+                  "svc__C": 1.0
+                }
+              },
+              {
+                "fold": 2,
+                "accuracy_percent": 50.0,
+                "parameters": {
+                  "svc__C": 1.0
+                }
+              },
+              {
+                "fold": 3,
+                "accuracy_percent": 48.4,
+                "parameters": {
+                  "svc__C": 1.0
+                }
+              },
+              {
+                "fold": 4,
+                "accuracy_percent": 52.6,
+                "parameters": {
+                  "svc__C": 1.0
+                }
+              },
+              {
+                "fold": 5,
+                "accuracy_percent": 53.0,
+                "parameters": {
+                  "svc__C": 1.0
+                }
+              },
+              {
+                "fold": 6,
+                "accuracy_percent": 49.8,
+                "parameters": {
+                  "svc__C": 1.0
+                }
+              },
+              {
+                "fold": 7,
+                "accuracy_percent": 54.400000000000006,
+                "parameters": {
+                  "svc__C": 1.0
+                }
+              },
+              {
+                "fold": 8,
+                "accuracy_percent": 46.6,
+                "parameters": {
+                  "svc__C": 1.0
+                }
+              },
+              {
+                "fold": 9,
+                "accuracy_percent": 49.0,
+                "parameters": {
+                  "svc__C": 1.0
+                }
+              },
+              {
+                "fold": 10,
+                "accuracy_percent": 50.50100200400801,
+                "parameters": {
+                  "svc__C": 1.0
+                }
+              }
+            ],
+            "fit_seconds": 2032.1781488999986
+          },
+          {
+            "variant": "evogfm",
+            "accuracy_percent": 53.4706613226453,
+            "fold_std_percent": 2.5573187299258118,
+            "folds": [
+              {
+                "fold": 1,
+                "accuracy_percent": 56.00000000000001,
+                "parameters": {
+                  "graphscale__weight": 1.0,
+                  "svc__C": 1.0
+                }
+              },
+              {
+                "fold": 2,
+                "accuracy_percent": 51.800000000000004,
+                "parameters": {
+                  "graphscale__weight": 1.0,
+                  "svc__C": 1.0
+                }
+              },
+              {
+                "fold": 3,
+                "accuracy_percent": 52.2,
+                "parameters": {
+                  "graphscale__weight": 1.0,
+                  "svc__C": 1.0
+                }
+              },
+              {
+                "fold": 4,
+                "accuracy_percent": 55.400000000000006,
+                "parameters": {
+                  "graphscale__weight": 1.0,
+                  "svc__C": 1.0
+                }
+              },
+              {
+                "fold": 5,
+                "accuracy_percent": 57.599999999999994,
+                "parameters": {
+                  "graphscale__weight": 1.0,
+                  "svc__C": 1.0
+                }
+              },
+              {
+                "fold": 6,
+                "accuracy_percent": 51.6,
+                "parameters": {
+                  "graphscale__weight": 1.0,
+                  "svc__C": 1.0
+                }
+              },
+              {
+                "fold": 7,
+                "accuracy_percent": 56.39999999999999,
+                "parameters": {
+                  "graphscale__weight": 1.0,
+                  "svc__C": 1.0
+                }
+              },
+              {
+                "fold": 8,
+                "accuracy_percent": 50.6,
+                "parameters": {
+                  "graphscale__weight": 1.0,
+                  "svc__C": 1.0
+                }
+              },
+              {
+                "fold": 9,
+                "accuracy_percent": 49.8,
+                "parameters": {
+                  "graphscale__weight": 1.0,
+                  "svc__C": 1.0
+                }
+              },
+              {
+                "fold": 10,
+                "accuracy_percent": 53.3066132264529,
+                "parameters": {
+                  "graphscale__weight": 1.0,
+                  "svc__C": 1.0
+                }
+              }
+            ],
+            "fit_seconds": 316.5914597999945
+          }
+        ]
+      }
+    ],
+    "links": {
+      "ogbl-ddi": {
+        "dataset": "ogbl-ddi",
+        "split": "test",
+        "protocol": "official OGB shared negative pool",
+        "positive_pairs": 133489,
+        "hits20_percent": 17.56699053854625,
+        "seconds": 27.787657400011085
+      }
+    },
+    "heart_large": {
+      "ogbl-ddi": {
+        "dataset": "ogbl-ddi",
+        "split": "test",
+        "protocol": "official HeaRT",
+        "positive_pairs": 133489,
+        "mrr_percent": 9.526625612982771,
+        "hits10_percent": 21.84674392646585,
+        "hits20_percent": 43.88751133052162,
+        "hits50_percent": 76.55761897984104,
+        "hits100_percent": 90.66140281221674,
+        "seconds": 1118.7230522000027
+      }
+    },
+    "heart_pubmed": {
+      "dataset": "pubmed",
+      "protocol": "official HeaRT",
+      "split": "test",
+      "ablation": "none",
+      "seed": 42,
+      "negative_mode": "mixed",
+      "source_epoch": 32,
+      "positive_pairs": 4432,
+      "negatives_per_positive": 500,
+      "mrr_percent": 9.738755615589616,
+      "hits10_percent": 21.61552346570397,
+      "hits20_percent": 34.56678700361011,
+      "hits50_percent": 56.994584837545126,
+      "hits100_percent": 75.67689530685921
     }
   }
 }

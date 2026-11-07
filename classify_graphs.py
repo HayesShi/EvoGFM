@@ -1,6 +1,8 @@
 """Frozen EvoGFM graph classification on TU datasets, nested 10-fold SVM."""
 
 import argparse
+import json
+from concurrent.futures import ThreadPoolExecutor
 import time
 from pathlib import Path
 
@@ -40,7 +42,7 @@ class GraphScale(TransformerMixin, BaseEstimator):
         )
 
 
-def fit_balanced(features, labels, split):
+def fit_balanced(features, labels, split, workers=1):
     """Inner CV with each fold's kernel computed once for all C values."""
     penalties = [0.001, 0.01, 0.1, 1.0, 10.0, 100.0, 1000.0]
     weights = [0.1, 1.0, 10.0]
@@ -54,9 +56,13 @@ def fit_balanced(features, labels, split):
             gamma = 1 / (x.shape[1] * variance) if variance else 1.0
             kernel = rbf_kernel(x, gamma=gamma)
             query = rbf_kernel(v, x, gamma=gamma)
-            for column, penalty in enumerate(penalties):
+
+            def evaluate_penalty(penalty):
                 fitted = SVC(kernel="precomputed", C=penalty).fit(kernel, labels[train])
-                scores[index, column] += fitted.score(query, labels[valid])
+                return fitted.score(query, labels[valid])
+
+            with ThreadPoolExecutor(max_workers=workers) as pool:
+                scores[index] += list(pool.map(evaluate_penalty, penalties))
     best = np.unravel_index(scores.argmax(), scores.shape)
     parameters = dict(graphscale__weight=weights[best[0]], svc__C=penalties[best[1]])
     classifier = make_pipeline(GraphScale(split), SVC(kernel="rbf"))
@@ -153,12 +159,24 @@ def evaluate(args):
         shots_per_class=args.shots,
         node_features=(
             "64 degree indicators; degree capped at 63; no original node attributes"
-            if args.dataset == "IMDB-BINARY"
+            if args.dataset
+            in ("IMDB-BINARY", "COLLAB", "REDDIT-BINARY", "REDDIT-MULTI-5K")
             else "one-hot node labels; no node attributes"
         ),
         protocol="nested stratified 10-fold; inner 5-fold C selection; fold standard deviation",
         rows=[],
     )
+    if args.resume and (output / "results.json").exists():
+        previous = json.loads((output / "results.json").read_text())
+        if (
+            previous["dataset"] != args.dataset
+            or previous["shots_per_class"] != args.shots
+            or previous["source_epoch"] != checkpoint["epoch"]
+        ):
+            raise ValueError(
+                "Resume configuration differs from the existing measurement"
+            )
+        result["rows"] = previous["rows"]
     save_json(
         output / "configuration.json",
         dict(
@@ -172,11 +190,21 @@ def evaluate(args):
         ),
     )
     for variant, features in [("statistics", basic), ("evogfm", full)]:
+        if any(row["variant"] == variant for row in result["rows"]):
+            print("Already complete", variant, flush=True)
+            continue
         begin = time.perf_counter()
         folds = []
+        progress_path = output / "fold_progress.json"
+        if args.resume and progress_path.exists():
+            progress = json.loads(progress_path.read_text())
+            if progress["variant"] == variant:
+                folds = progress["folds"]
         for fold, (train, test) in enumerate(
             tqdm(list(outer.split(features, y)), desc=f"{args.dataset} {variant} CV"), 1
         ):
+            if fold <= len(folds):
+                continue
             if args.shots:
                 generator = np.random.default_rng(42 + fold)
                 train = np.concatenate(
@@ -189,7 +217,7 @@ def evaluate(args):
             grid = {"svc__C": [0.001, 0.01, 0.1, 1.0, 10.0, 100.0, 1000.0]}
             if variant == "evogfm" and args.balanced_readout:
                 fitted, parameters = fit_balanced(
-                    features[train], y[train], basic.shape[1]
+                    features[train], y[train], basic.shape[1], workers=args.workers
                 )
             else:
                 fitted = GridSearchCV(
@@ -213,6 +241,9 @@ def evaluate(args):
                 )
             )
             print(variant, fold, folds[-1], flush=True)
+            save_json(
+                progress_path, dict(variant=variant, folds=folds, dataset=args.dataset)
+            )
         values = [r["accuracy_percent"] for r in folds]
         result["rows"].append(
             dict(
@@ -235,7 +266,16 @@ if __name__ == "__main__":
     parser.add_argument("--threads", type=int, default=4)
     parser.add_argument(
         "--dataset",
-        choices=["PROTEINS", "NCI1", "MUTAG", "DD", "IMDB-BINARY"],
+        choices=[
+            "PROTEINS",
+            "NCI1",
+            "MUTAG",
+            "DD",
+            "IMDB-BINARY",
+            "COLLAB",
+            "REDDIT-BINARY",
+            "REDDIT-MULTI-5K",
+        ],
         default="PROTEINS",
     )
     parser.add_argument("--balanced-readout", action="store_true")
@@ -243,4 +283,15 @@ if __name__ == "__main__":
         "--shots", type=int, default=0, help="Training graphs per class; 0 uses all"
     )
     parser.add_argument("--embedding-cache", help="Reuse frozen graph representations")
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Reuse completed variants and outer folds in this output folder",
+    )
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=1,
+        help="Concurrent SVM penalties; does not change the search grid",
+    )
     evaluate(parser.parse_args())

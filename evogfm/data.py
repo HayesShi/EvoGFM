@@ -245,8 +245,10 @@ def load_graph(name, data_root="data"):
     cache = data_root / "graphs" / f"{name}.pt"
     if cache.exists():
         graph = torch.load(cache, map_location="cpu", weights_only=False)
+        if graph["x"].layout != torch.strided:
+            graph["x"] = graph["x"].to_dense()
         # Older Wisconsin caches predate public NC mask support.
-        if name != "wisconsin" or all(
+        if name not in ("wisconsin", "photo") or all(
             part in graph for part in ("train", "val", "test")
         ):
             return graph
@@ -395,7 +397,7 @@ def load_graph(name, data_root="data"):
                     torch.from_numpy(np.stack(a.nonzero())), x.shape[0]
                 ),
             )
-        if name in ("computers", "coauthor-cs"):
+        if name in ("photo", "computers", "coauthor-cs"):
             from sklearn.model_selection import train_test_split
 
             # GraphAny's semi-supervised split: 20*C train nodes in total,
@@ -458,9 +460,19 @@ def load_graph(name, data_root="data"):
                 mask = masks[:, 0] if masks.shape[0] == len(graph["x"]) else masks[0]
                 graph[part] = torch.where(mask)[0]
     else:
-        raise ValueError(f"Unsupported graph: {name}")
+        from .benchmarks import load_node_benchmark
+
+        graph = load_node_benchmark(name, raw)
     cache.parent.mkdir(parents=True, exist_ok=True)
-    torch.save(graph, cache)
+    stored = graph
+    if (
+        name not in ("ogbn-products", "reddit")
+        and graph["x"].numel() > 8_000_000
+        and float((graph["x"] != 0).float().mean()) < 0.15
+    ):
+        stored = dict(graph, x=graph["x"].to_sparse_csr())
+    if name not in ("ogbn-products", "reddit"):
+        torch.save(stored, cache)
     return graph
 
 
@@ -503,11 +515,12 @@ def ncn_split(graph):
     )
 
 
-def load_protocol(name, task, data_root="data"):
+def load_protocol(name, task, data_root="data", graph=None):
     path = Path(data_root) / "protocols" / f"{name}_{task}.pt"
     if path.exists():
         return torch.load(path, map_location="cpu", weights_only=False)
-    graph = load_graph(name, data_root)
+    if graph is None:
+        graph = load_graph(name, data_root)
     if task == "nc":
         if "train" not in graph:
             raise ValueError(f"{name} has no public NC masks in this pilot")
@@ -518,7 +531,8 @@ def load_protocol(name, task, data_root="data"):
     else:
         raise ValueError("task must be nc or lp")
     path.parent.mkdir(parents=True, exist_ok=True)
-    torch.save(protocol, path)
+    if name not in ("ogbn-products", "reddit"):
+        torch.save(protocol, path)
     return protocol
 
 
@@ -529,11 +543,26 @@ def load_proteins(data_root="data"):
 
 def load_tu(name, data_root="data"):
     """TU graphs: node-label indicators, or capped degree indicators for IMDB."""
-    if name not in ("PROTEINS", "NCI1", "MUTAG", "DD", "IMDB-BINARY"):
+    degree_features = name in (
+        "IMDB-BINARY",
+        "COLLAB",
+        "REDDIT-BINARY",
+        "REDDIT-MULTI-5K",
+    )
+    if name not in (
+        "PROTEINS",
+        "NCI1",
+        "MUTAG",
+        "DD",
+        "IMDB-BINARY",
+        "COLLAB",
+        "REDDIT-BINARY",
+        "REDDIT-MULTI-5K",
+    ):
         raise ValueError("Unsupported TU dataset")
     folder = Path(data_root) / "raw" / name.lower() / name
     suffixes = ("A", "graph_indicator", "graph_labels")
-    if name != "IMDB-BINARY":
+    if not degree_features:
         suffixes += ("node_labels",)
     if not (folder / f"{name}_A.txt").exists():
         archive = download(
@@ -553,20 +582,29 @@ def load_tu(name, data_root="data"):
     }
     indicator = arrays["graph_indicator"] - 1
     edges = arrays["A"].T - 1
-    if name == "IMDB-BINARY":
-        unique_edges = canonical_edges(edges, len(indicator))
-        degree = torch.bincount(unique_edges.flatten(), minlength=len(indicator))
-        x = (degree.clamp_max(63)[:, None] == torch.arange(64)).float()
-    else:
+    if not degree_features:
         node_classes = arrays["node_labels"].unique(sorted=True)
         x = (arrays["node_labels"][:, None] == node_classes).float()
     _, labels = arrays["graph_labels"].unique(sorted=True, return_inverse=True)
     counts = torch.bincount(indicator)
     offsets = torch.cat((counts.new_zeros(1), counts.cumsum(0)))
     membership = indicator[edges[0]]
+    if bool((membership[1:] < membership[:-1]).any()):
+        order = membership.argsort(stable=True)
+        edges, membership = edges[:, order], membership[order]
+    edge_counts = torch.bincount(membership, minlength=len(counts))
+    edge_offsets = torch.cat((edge_counts.new_zeros(1), edge_counts.cumsum(0)))
     graphs = []
     for index, count in enumerate(counts.tolist()):
         first, last = int(offsets[index]), int(offsets[index + 1])
-        local_edges = edges[:, membership == index] - first
-        graphs.append(dict(x=x[first:last], edges=canonical_edges(local_edges, count)))
+        local_edges = canonical_edges(
+            edges[:, int(edge_offsets[index]) : int(edge_offsets[index + 1])] - first,
+            count,
+        )
+        if degree_features:
+            degree = torch.bincount(local_edges.flatten(), minlength=count)
+            features = (degree.clamp_max(63)[:, None] == torch.arange(64)).float()
+        else:
+            features = x[first:last]
+        graphs.append(dict(x=features, edges=local_edges))
     return graphs, labels
