@@ -162,6 +162,9 @@ def test_prepared_link_channels_and_head_streaming():
             pair_channels(raw, edges, pairs),
         )
         torch.testing.assert_close(scorer.features(pairs), full, rtol=2e-4, atol=3e-5)
+        # Exercise the sparse query grouping as well as the dense cache above.
+        scorer.dense = None
+        torch.testing.assert_close(scorer.features(pairs), full, rtol=2e-4, atol=3e-5)
         from evogfm.readout import fit_residual
 
         features = scorer.features(pairs)
