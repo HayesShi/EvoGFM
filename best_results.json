@@ -1059,11 +1059,11 @@
     }
   },
   "coverage": {
-    "updated": "2026-11-07T19:13:21",
+    "updated": "2026-11-07T19:16:50",
     "node": "31/31",
     "public_lp": "7/7",
     "heart_small": "3/3",
-    "heart_large": "1/4",
+    "heart_large": "2/4",
     "graph": "8/8",
     "missing_nodes": []
   },
@@ -2753,6 +2753,18 @@
       }
     },
     "heart_large": {
+      "ogbl-collab": {
+        "dataset": "ogbl-collab",
+        "split": "test",
+        "protocol": "official HeaRT",
+        "positive_pairs": 46329,
+        "mrr_percent": 6.643427836806817,
+        "hits10_percent": 14.738069028038593,
+        "hits20_percent": 22.84746055386475,
+        "hits50_percent": 36.08538928101189,
+        "hits100_percent": 47.419542834941396,
+        "seconds": 235.61819310000283
+      },
       "ogbl-ddi": {
         "dataset": "ogbl-ddi",
         "split": "test",
