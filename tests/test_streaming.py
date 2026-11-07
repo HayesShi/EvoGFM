@@ -8,6 +8,31 @@ from evogfm.feature_views import FeatureView, quadratic_features, rbf_features
 from evogfm.readout import ridge
 
 
+def test_sparse_weighted_two_hop_gradients_match_tensor_aggregation():
+    from evogfm.features import SparseWeightedPropagation
+
+    torch.manual_seed(42)
+    edges = torch.randint(23, (2, 93))
+    values = torch.randn(23, 13, requires_grad=True)
+    weights = torch.rand(93, requires_grad=True)
+    probe = torch.randn_like(values)
+
+    def dense(x):
+        return x.new_zeros(x.shape).index_add_(
+            0, edges[0], weights[:, None] * x[edges[1]]
+        )
+
+    expected = dense(dense(values))
+    gradients = torch.autograd.grad((expected * probe).sum(), (values, weights))
+    actual = SparseWeightedPropagation.apply(
+        SparseWeightedPropagation.apply(values, edges, weights), edges, weights
+    )
+    streamed = torch.autograd.grad((actual * probe).sum(), (values, weights))
+    torch.testing.assert_close(actual, expected)
+    for a, b in zip(streamed, gradients):
+        torch.testing.assert_close(a, b, rtol=1e-5, atol=1e-5)
+
+
 def test_shared_ablation_scoring_equals_separate_controls():
     from evogfm.data import canonical_edges
     from evogfm.link_inference import LinkScorer

@@ -28,6 +28,8 @@ The [paper draft](1106-EvoGFM_paper.md) is included unchanged. This release cont
 
 The latest [V8 experiments](EXPERIMENTS_V8.md) complete the original-table dataset coverage for GraphAny, NCN, HeaRT and GraphCL. Measurements and protocols are recorded in that report and [results_v8.json](results_v8.json). [V7](EXPERIMENTS_V7.md) contains scarcity and continual-learning experiments, including a six-domain stream and four future-domain probes.
 
+The [expanded accumulation study](EXPERIMENTS_ACCUMULATION.md) evaluates 20 future-target entries at four label budgets and compares six stream/backbone configurations on validation. With one fixed final state, test accuracy improves by 6.21 points on Computers and 5.16 points on BlogCatalog at one label per class. [Complete tables](ACCUMULATION_TABLES.md) include negative results, both learning orders and all budgets; these use a separate continual-learning protocol.
+
 [Seven complete published comparison tables](BEST_TABLES.md), including PENCIL (ICML 2026), preserve all original baseline rows and dataset columns, adding our best observed V4–V8 results. The [provenance index](best_results.json) identifies each result's version and measurement file. This cross-version development summary is separate from a single fixed-configuration experiment.
 
 ## Install

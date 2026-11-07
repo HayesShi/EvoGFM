@@ -165,9 +165,42 @@ def node_representations(
     return parts, h
 
 
+class SparseWeightedPropagation(torch.autograd.Function):
+    """Exact CPU sparse aggregation with edge-wise gradients computed in blocks."""
+
+    @staticmethod
+    def forward(ctx, value, visible, weight):
+        ctx.save_for_backward(value, visible, weight)
+        matrix = sp.csr_matrix(
+            (weight.detach().numpy(), tuple(visible.numpy())),
+            shape=(len(value), len(value)),
+        )
+        return torch.from_numpy(matrix @ value.detach().numpy())
+
+    @staticmethod
+    def backward(ctx, upstream):
+        value, visible, weight = ctx.saved_tensors
+        value_gradient = weight_gradient = None
+        if ctx.needs_input_grad[0]:
+            matrix = sp.csr_matrix(
+                (weight.detach().numpy(), tuple(visible.numpy())),
+                shape=(len(value), len(value)),
+            )
+            value_gradient = torch.from_numpy(matrix.T @ upstream.detach().numpy())
+        if ctx.needs_input_grad[2]:
+            weight_gradient = torch.empty_like(weight)
+            for start in range(0, visible.shape[1], 256):
+                stop = min(start + 256, visible.shape[1])
+                target, source = visible[:, start:stop]
+                weight_gradient[start:stop] = (upstream[target] * value[source]).sum(1)
+        return value_gradient, None, weight_gradient
+
+
 def weighted_propagate(value, visible, weight):
     """Identical full-edge aggregation without an E-by-feature temporary at inference."""
-    if not torch.is_grad_enabled() and visible.shape[1] * value.shape[1] > 8_000_000:
+    if visible.shape[1] * value.shape[1] > 8_000_000 and value.device.type == "cpu":
+        if torch.is_grad_enabled() and (value.requires_grad or weight.requires_grad):
+            return SparseWeightedPropagation.apply(value, visible, weight)
         matrix = sp.csr_matrix(
             (weight.numpy(), tuple(visible.numpy())), shape=(len(value), len(value))
         )
@@ -258,8 +291,8 @@ def task_features(
     v = ctx["visible"]
     if prepared is None:
         w = attention(model, state, v, uniform)
-        p1 = raw.new_zeros(raw.shape).index_add_(0, v[0], w[:, None] * raw[v[1]])
-        p2 = raw.new_zeros(raw.shape).index_add_(0, v[0], w[:, None] * p1[v[1]])
+        p1 = weighted_propagate(raw, v, w)
+        p2 = weighted_propagate(p1, v, w)
         z0, z1, z2 = [F.normalize(x, dim=1) for x in [raw, p1, p2]]
     else:
         w, parts = prepared

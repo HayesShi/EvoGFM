@@ -32,6 +32,7 @@ def calibrate(
     source_anchor=0.0,
     controls=("static", "cumulative", "reset"),
     source_states=None,
+    nc_view="masked",
 ):
     seed_all(42)
     torch.set_num_threads(threads)
@@ -110,6 +111,12 @@ def calibrate(
 
     def score(p, split):
         return bundle(p, split)[0]
+
+    def node_parts(name):
+        n = nc_packs[name]
+        return task_features(
+            model, n["state"], n["raw"], n["edges"], n["pairs"], n["ctx"], n["base"]
+        )[1]
 
     def flat_gradient(output, grad_outputs=None, retain_graph=False):
         grads = torch.autograd.grad(
@@ -250,6 +257,7 @@ def calibrate(
         source_anchor=source_anchor,
         controls=list(controls),
         source_states=source_states,
+        nc_view=nc_view,
     )
     save_json(output / f"{task}_configuration.json", settings)
     trajectories = {}
@@ -282,13 +290,15 @@ def calibrate(
                 batches = adapt.split(256)
                 for batch in range(4):
                     ix = batches[batch % len(batches)]
-                    logits, parts = bundle(p, "calibration")
-                    prediction = logits[ix]
-                    lp_loss = F.binary_cross_entropy_with_logits(
-                        prediction, part["y"][ix]
-                    )
-                    loss = lp_loss
-                    curvature = ggn(prediction)
+                    if nc_only and nc_view == "full":
+                        parts = node_parts(name)
+                    else:
+                        logits, parts = bundle(p, "calibration")
+                        prediction = logits[ix]
+                        loss = F.binary_cross_entropy_with_logits(
+                            prediction, part["y"][ix]
+                        )
+                        curvature = ggn(prediction)
                     if nc_only:
                         support, query = episode(
                             p["node_y"],
@@ -323,13 +333,15 @@ def calibrate(
                         candidate[k:] = initial[k:]
                         model.inverse.set_theta(candidate)
                         with torch.no_grad():
-                            held_logits, held_parts = bundle(p, "calibration")
-                            held_lp = float(
-                                F.binary_cross_entropy_with_logits(
-                                    held_logits[held], part["y"][held]
+                            if nc_only and nc_view == "full":
+                                held_parts = node_parts(name)
+                            else:
+                                held_logits, held_parts = bundle(p, "calibration")
+                                value = float(
+                                    F.binary_cross_entropy_with_logits(
+                                        held_logits[held], part["y"][held]
+                                    )
                                 )
-                            )
-                            value = held_lp
                             if nc_only:
                                 nc, truth = nc_logits(
                                     held_parts, p["node_y"], p["nc_adapt"], p["nc_held"]
@@ -401,6 +413,7 @@ def run(
     source_anchor=0.0,
     controls=("static", "cumulative", "reset"),
     source_states=None,
+    nc_view="masked",
 ):
     """Run static/cumulative/reset controls and save the final two-task bank."""
     if set(stream) & set(future):
@@ -421,6 +434,7 @@ def run(
             source_anchor,
             controls,
             source_states,
+            nc_view,
         )
         for name in tasks
     }
