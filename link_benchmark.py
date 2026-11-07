@@ -35,6 +35,8 @@ def evaluate(args):
     edges = graph["edges"]
     del graph
     model, head, metadata = load_checkpoint(args.checkpoint)
+    if args.ablation == "zero-inverse":
+        model.inverse.set_theta(torch.zeros_like(model.inverse.theta()))
     cache = (
         Path(args.calibration_cache)
         if args.calibration_cache
@@ -45,17 +47,21 @@ def evaluate(args):
         if (
             stored["checkpoint"] != str(Path(args.checkpoint).resolve())
             or stored["dataset"] != args.dataset
+            or stored.get("ablation", "full") != args.ablation
         ):
             raise ValueError("Calibration cache identity mismatch")
         fitted, selection = stored["fitted"], stored["selection"]
     else:
-        fitted, selection = fit_large_links(model, head, raw, x, edges)
+        fitted, selection = fit_large_links(
+            model, head, raw, x, edges, ablation=args.ablation
+        )
         torch.save(
             dict(
                 fitted=fitted,
                 selection=selection,
                 dataset=args.dataset,
                 checkpoint=str(Path(args.checkpoint).resolve()),
+                ablation=args.ablation,
             ),
             cache,
         )
@@ -66,6 +72,7 @@ def evaluate(args):
             checkpoint=args.checkpoint,
             source_graphs=metadata["source_graphs"],
             seed=42,
+            ablation=args.ablation,
             selection=selection,
             source_epoch=metadata["epoch"],
             protocol="official OGB; collab test includes validation edges",
@@ -92,7 +99,7 @@ def evaluate(args):
                 )
             )
             print("Preparing complete inference graph", args.dataset, split, flush=True)
-            scorer = LinkScorer(model, head, raw, x, visible)
+            scorer = LinkScorer(model, head, raw, x, visible, ablation=args.ablation)
         positives = positive_pairs(splits[split])
         if args.heart_archive:
             candidates, indices = heart_candidates(
@@ -185,7 +192,13 @@ def evaluate(args):
         rows.append(row)
         save_json(
             output / "results.json",
-            dict(seed=42, checkpoint=args.checkpoint, selection=selection, rows=rows),
+            dict(
+                seed=42,
+                checkpoint=args.checkpoint,
+                ablation=args.ablation,
+                selection=selection,
+                rows=rows,
+            ),
         )
         print("RESULT", row, flush=True)
         del candidates
@@ -211,5 +224,8 @@ if __name__ == "__main__":
         help="Reuse the same checkpoint's training-only calibration",
     )
     parser.add_argument("--threads", type=int, default=4)
+    parser.add_argument(
+        "--ablation", choices=["full", "zero-inverse", "propagation"], default="full"
+    )
     parser.add_argument("--batch-size", type=int, default=512)
     evaluate(parser.parse_args())

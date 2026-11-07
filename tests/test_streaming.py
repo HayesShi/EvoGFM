@@ -8,6 +8,37 @@ from evogfm.feature_views import FeatureView, quadratic_features, rbf_features
 from evogfm.readout import ridge
 
 
+def test_shared_ablation_scoring_equals_separate_controls():
+    from evogfm.data import canonical_edges
+    from evogfm.link_inference import LinkScorer
+    from evogfm.readout import new_head, fit_residual
+
+    torch.manual_seed(42)
+    model = InverseLawGFM(
+        input_dim=8, d=8, hidden=16, heads=2, layers=1, rank=4, frame_aligned=True
+    ).eval()
+    model.config["joint_task_backbone"] = True
+    head = new_head(backbone=True).eval()
+    model.inverse.set_theta(torch.zeros_like(model.inverse.theta()))
+    raw = torch.randn(35, 8)
+    edges = canonical_edges(torch.randint(35, (2, 100)), 35)
+    scorer = LinkScorer(model, head, raw, raw, edges)
+    pairs = torch.randint(35, (2, 90))
+    fitted = {}
+    for variant in ("zero-inverse", "propagation"):
+        scorer.ablation = "propagation" if variant == "propagation" else "full"
+        f = scorer.features(pairs)
+        fitted[variant] = fit_residual(
+            f, head(f).squeeze(1).detach(), torch.arange(90) % 2
+        )
+    scorer.ablation = "full"
+    combined = scorer.score(pairs, fitted, batch_size=11)
+    for column, variant in enumerate(fitted):
+        scorer.ablation = "propagation" if variant == "propagation" else "full"
+        separate = scorer.score(pairs, fitted[variant], batch_size=11)
+        torch.testing.assert_close(combined[:, column], separate)
+
+
 def test_large_edge_quadrature_stays_in_bounds():
     model = InverseLawGFM(d=8, rank=4, hidden=16, heads=2, layers=1)
     # A strided view exercises 61M edge IDs without allocating a large graph.

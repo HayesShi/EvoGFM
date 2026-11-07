@@ -211,6 +211,39 @@ The [complete comparison tables](BEST_TABLES.md) cover GraphAny, NCN, HeaRT and 
 
 The [V7 report](EXPERIMENTS_V7.md) adds all new graphs and the full low-resource tables. MUTAG reaches 87.72%; DD 77.59% and IMDB 70.50% remain below GraphCL's published means. Joint scarcity gives Coauthor-CS 82.40% versus the original readout's 75.96%, while Squirrel declines. Continual cumulative LP retains old domains better than reset, but future-domain transfer remains mixed. Symmetric eigensolvers retry in float64 on float32 failure; ridge predictions run in exact float64 blocks to limit high-dimensional memory use.
 
+## Retention, accumulation and mechanism experiments
+
+Run the three evidence groups with one seed:
+
+```bash
+python run_evidence.py --groups 3 4 5 --threads 3
+python collect_evidence.py
+```
+
+Group 3 evaluates the six-domain stream in both directions, using static, reset,
+cumulative and reset-curvature controls. Every adapting domain receives exactly
+four updates, cycling the training batches on tiny graphs. NC is evaluated both
+with a newly fitted ridge and with the old domain's first-acquisition head frozen.
+LP retains the source head throughout. Validation results are separate from public
+test results.
+
+Group 4 evaluates all seven saved prefixes on three official GraphLand RL probes
+(AP) and preserves the four older probes. Future labels fit the evaluation head;
+they never update the shared inverse state. Group 5 compares full, zero-inverse
+and ordinary-propagation representations on NC, PPA HeaRT, road regression and
+the published GP2F MUTAG sampling protocol. The complete candidate pools are used.
+
+The runner resumes completed measurements in `runs/round345`. Run group 3 before
+group 4 when selecting groups separately. It uses `runs/reference/best.pt`; the
+HeaRT archive path can be set with `--heart-archive`. GraphLand's four small
+official archives are downloaded as needed. Existing matching source curvature
+can optionally be reused with `--source-states runs/continual_v7`.
+
+The [evidence report](EXPERIMENTS_345.md) summarizes the measurements; the
+[matrix appendix](EVIDENCE_MATRICES.md) retains every prefix and both orders.
+The collector also includes the locally saved V7 history and the complete V8
+PPA reference measurement.
+
 ## Files and outputs
 
 ```text
@@ -222,6 +255,12 @@ link_benchmark.py           Official OGB and large-graph HeaRT evaluation
 classify_graphs.py          Frozen graph representations and nested SVM evaluation
 continual.py                Task-conditioned stream experiments
 evaluate_future.py          Replay saved continual states on future domains
+evaluate_retention.py       Fixed-head replay of old node tasks
+evaluate_graphland.py       Official RL future probes and scalar regression
+classify_fewshot.py         GP2F graph-level support/test episode
+ablate_ppa.py               Complete PPA HeaRT mechanism controls
+run_evidence.py             Run/resume evidence groups 3, 4 and 5
+collect_evidence.py         Export measured evidence tables and all matrices
 evogfm/model.py             Inverse map and programmed attention
 evogfm/features.py          Graph frame, propagation and pair features
 evogfm/data.py              Graph loaders and split protocols
@@ -243,6 +282,9 @@ results_v5.json             V5 measured results and PROTEINS folds
 results_v6.json             V6 measured results, folds and continual matrices
 results_v7.json             V7 measurements, support indices and future trajectories
 results_v8.json             V8 measurements and completion status
+EXPERIMENTS_345.md          Retention, accumulation and mechanism results
+EVIDENCE_MATRICES.md        Every replay matrix and future-domain prefix
+results_345.json            Complete measured group 3/4/5 evidence
 1106-EvoGFM_paper.md         Original supplied manuscript draft
 ```
 

@@ -17,7 +17,7 @@ from sklearn.metrics.pairwise import rbf_kernel
 from tqdm import tqdm
 
 from evogfm.data import load_tu, save_json, seed_all
-from evogfm.features import preprocess, node_representations
+from evogfm.features import preprocess, node_representations, ordinary_representations
 from evogfm.training import load_checkpoint
 
 
@@ -70,14 +70,17 @@ def fit_balanced(features, labels, split, workers=1):
     return classifier, parameters
 
 
-def graph_vectors(model, graphs, name="PROTEINS"):
+def graph_vectors(model, graphs, name="PROTEINS", variant="full"):
     full, statistics = [], []
     with torch.no_grad():
         for graph in tqdm(graphs, desc=f"{name} graph encoding"):
             raw, x = preprocess(graph)
             edges = graph["edges"]
             state = model.state(x, edges)
-            parts, h = node_representations(model, state, raw, edges, hops=4)
+            if variant == "propagation":
+                parts, h = ordinary_representations(raw, edges, hops=4)
+            else:
+                parts, h = node_representations(model, state, raw, edges, hops=4)
             nodes = torch.cat(parts + [h], dim=1)
             pooled = torch.cat(
                 (nodes.mean(0), nodes.std(0, unbiased=False), nodes.max(0).values)

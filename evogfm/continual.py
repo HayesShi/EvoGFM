@@ -30,6 +30,8 @@ def calibrate(
     threads,
     nc_metric="accuracy",
     source_anchor=0.0,
+    controls=("static", "cumulative", "reset"),
+    source_states=None,
 ):
     seed_all(42)
     torch.set_num_threads(threads)
@@ -196,7 +198,15 @@ def calibrate(
 
     source_metric = torch.eye(len(initial)) * 0.1
     source_curvature_samples = []
-    for p in source_packs(ckpt["source_graphs"], data_root):
+    if source_states:
+        saved = torch.load(
+            Path(source_states) / f"{task}_states.pt", weights_only=False
+        )
+        prior = saved["cumulative"][0]
+        if not torch.equal(torch.as_tensor(prior["theta"]).float(), initial):
+            raise ValueError("Source state does not match checkpoint coefficients")
+        source_metric = torch.as_tensor(prior["metric"]).float()
+    for p in [] if source_states else source_packs(ckpt["source_graphs"], data_root):
         logits, parts = score_source(model, head, p, "calibration")
         if not nc_only:
             selected = torch.randperm(
@@ -238,12 +248,14 @@ def calibrate(
         line_search=[0, 0.25, 1, 4],
         nc_ridge=0.1,
         source_anchor=source_anchor,
+        controls=list(controls),
+        source_states=source_states,
     )
     save_json(output / f"{task}_configuration.json", settings)
     trajectories = {}
     summary = {}
     online_states = {}
-    for kind in ["static", "cumulative", "reset"]:
+    for kind in controls:
         seed_all(42)
         model.inverse.set_theta(initial)
         ons = OnlineNewton(initial, lower, upper, eta=1.0, ridge=0.1)
@@ -258,6 +270,8 @@ def calibrate(
                     model.inverse.set_theta(initial)
                     ons = OnlineNewton(initial, lower, upper, eta=1.0, ridge=0.1)
                     ons.metric = source_metric.double().numpy().copy()
+                elif kind == "reset-curvature":
+                    ons.metric = source_metric.double().numpy().copy()
                 p = packs[name]
                 part = p["calibration"]
                 order = torch.randperm(
@@ -265,7 +279,9 @@ def calibrate(
                 )
                 adapt = order[: min(1024, len(order) * 2 // 3)]
                 held = order[len(adapt) : len(adapt) + 512]
-                for batch, ix in enumerate(adapt.split(256)):
+                batches = adapt.split(256)
+                for batch in range(4):
+                    ix = batches[batch % len(batches)]
                     logits, parts = bundle(p, "calibration")
                     prediction = logits[ix]
                     lp_loss = F.binary_cross_entropy_with_logits(
@@ -383,6 +399,8 @@ def run(
     threads=4,
     nc_metric="accuracy",
     source_anchor=0.0,
+    controls=("static", "cumulative", "reset"),
+    source_states=None,
 ):
     """Run static/cumulative/reset controls and save the final two-task bank."""
     if set(stream) & set(future):
@@ -401,6 +419,8 @@ def run(
             threads,
             nc_metric,
             source_anchor,
+            controls,
+            source_states,
         )
         for name in tasks
     }
@@ -408,6 +428,7 @@ def run(
     initial = model.inverse.theta().detach().clone()
     lower, upper = model.inverse.bounds()
     bank = TaskCoefficientBank(initial, lower, upper, tasks=tasks)
-    for name in tasks:
-        bank.load_task(name, states[name]["cumulative"][-1])
-    torch.save(bank.state_dict(), Path(output) / "task_bank.pt")
+    if "cumulative" in controls:
+        for name in tasks:
+            bank.load_task(name, states[name]["cumulative"][-1])
+        torch.save(bank.state_dict(), Path(output) / "task_bank.pt")

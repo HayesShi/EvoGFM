@@ -58,6 +58,18 @@ def normalized_propagation(matrix):
     return sp.diags(inv) @ matrix @ sp.diags(inv)
 
 
+def ordinary_representations(raw, edges, hops=4, return_transition=False):
+    """Uniform self-loop propagation, retaining the same readout block layout."""
+    transition = normalized_propagation(adjacency(edges, len(raw))).tocsr()
+    parts = [F.normalize(raw, dim=1)]
+    value = raw
+    for _ in range(hops):
+        value = torch.from_numpy(transition @ value.numpy()).float()
+        parts.append(F.normalize(value, dim=1))
+    encoder = raw.new_zeros(len(raw), 128)
+    return (parts, encoder, transition) if return_transition else (parts, encoder)
+
+
 def pair_context(x, edges, normalized=None):
     """Cache query-independent content for large candidate pools."""
     a = adjacency(edges, len(x)).tocsr()

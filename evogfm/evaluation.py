@@ -14,6 +14,7 @@ from .features import (
     pair_channels,
     node_representations,
     hard_negative_pool,
+    ordinary_representations,
 )
 from .readout import (
     ridge,
@@ -153,6 +154,8 @@ def evaluate(
 ):
     if shots < 0 or not 0 < edge_rate <= 1:
         raise ValueError("shots must be nonnegative and edge_rate must be in (0, 1]")
+    if ablation == "propagation" and lp:
+        raise ValueError("Use link_benchmark.py for the propagation LP control")
     seed_all(42)
     torch.set_num_threads(threads)
     model, head, ckpt = load_checkpoint(checkpoint)
@@ -189,14 +192,22 @@ def evaluate(
                 if nc_metric == "auto" and len(graph["y"].unique()) == 2
                 else ("accuracy" if nc_metric == "auto" else nc_metric)
             )
-            parts, values, transition = node_representations(
-                model,
-                state,
-                raw,
-                edges,
-                hops=2 if node_readout == "current" else 4,
-                return_transition=True,
-            )
+            if ablation == "propagation":
+                parts, values, transition = ordinary_representations(
+                    raw,
+                    edges,
+                    hops=2 if node_readout == "current" else 4,
+                    return_transition=True,
+                )
+            else:
+                parts, values, transition = node_representations(
+                    model,
+                    state,
+                    raw,
+                    edges,
+                    hops=2 if node_readout == "current" else 4,
+                    return_transition=True,
+                )
             if node_readout in ("enhanced", "advanced"):
                 scores, info = enhanced_ridge(
                     parts,

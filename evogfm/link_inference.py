@@ -46,8 +46,11 @@ class LinkScorer:
     """The released 17 channels: ten content/topology, six inverse, one encoder."""
 
     @torch.no_grad()
-    def __init__(self, model, head, raw, x, edges, observation_rate=1.0):
+    def __init__(
+        self, model, head, raw, x, edges, observation_rate=1.0, ablation="full"
+    ):
         self.model, self.head, self.raw = model, head, raw
+        self.ablation = ablation
         self.state = model.state(x, edges, observation_rate)
         self.parts, self.h = node_representations(model, self.state, raw, edges, hops=2)
         # CSV features can be column-major; queries gather complete node rows.
@@ -134,6 +137,8 @@ class LinkScorer:
             extra = torch.cat(
                 (extra, (self.h[i] * self.h[j]).sum(1, keepdim=True)), dim=1
             )
+        if self.ablation == "propagation":
+            extra = torch.zeros_like(extra)
         return torch.cat((base, extra), dim=1)
 
     @torch.no_grad()
@@ -162,9 +167,25 @@ class LinkScorer:
             disable=pairs.shape[1] < 100_000,
         ):
             features = self.features(batch)
-            output.append(
-                predict_residual(features, self.head(features).squeeze(1), fitted)
-            )
+            if isinstance(fitted, dict):
+                columns = []
+                for name, readout in fitted.items():
+                    selected = features
+                    if name == "propagation":
+                        selected = torch.cat(
+                            (features[:, :10], torch.zeros_like(features[:, 10:])),
+                            dim=1,
+                        )
+                    columns.append(
+                        predict_residual(
+                            selected, self.head(selected).squeeze(1), readout
+                        )
+                    )
+                output.append(torch.stack(columns, dim=1))
+            else:
+                output.append(
+                    predict_residual(features, self.head(features).squeeze(1), fitted)
+                )
         scores = torch.cat(output)
         if order is not None:
             restored = torch.empty_like(scores)
@@ -193,7 +214,7 @@ def uniform_nonedges(n, edges, count, seed=42):
     return torch.from_numpy(np.stack((result // n, result % n)))
 
 
-def fit_large_links(model, head, raw, x, edges):
+def fit_large_links(model, head, raw, x, edges, ablation="full"):
     """Four full masked views; same 4096 fit and 2048 calibration examples."""
     generator = torch.Generator().manual_seed(42)
     count = edges.shape[1]
@@ -233,7 +254,7 @@ def fit_large_links(model, head, raw, x, edges):
         train_y, held_y = torch.cat(
             (torch.ones(len(pos_ids)), torch.zeros(512))
         ), torch.cat((torch.ones(len(val_ids)), torch.zeros(256)))
-        scorer = LinkScorer(model, head, raw, x, support, 0.8)
+        scorer = LinkScorer(model, head, raw, x, support, 0.8, ablation=ablation)
         with torch.no_grad():
             tf, hf = [
                 torch.cat([scorer.features(batch) for batch in pairs.split(256, dim=1)])
