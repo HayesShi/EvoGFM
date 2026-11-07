@@ -1059,9 +1059,9 @@
     }
   },
   "coverage": {
-    "updated": "2026-11-07T18:26:47",
+    "updated": "2026-11-07T19:06:34",
     "node": "31/31",
-    "public_lp": "6/7",
+    "public_lp": "7/7",
     "heart_small": "3/3",
     "heart_large": "1/4",
     "graph": "8/8",
@@ -2730,6 +2730,18 @@
         "positive_pairs": 3031780,
         "hits100_percent": 43.43177935074445,
         "seconds": 988.313868199999
+      },
+      "ogbl-citation2": {
+        "dataset": "ogbl-citation2",
+        "split": "test",
+        "protocol": "official OGB citation2 target candidates",
+        "positive_pairs": 86596,
+        "mrr_percent": 89.77435869258883,
+        "hits10_percent": 96.6799852187168,
+        "hits20_percent": 97.83708254422837,
+        "hits50_percent": 98.83828352348839,
+        "hits100_percent": 99.34408055799344,
+        "seconds": 1588.0933139000117
       },
       "ogbl-ddi": {
         "dataset": "ogbl-ddi",
