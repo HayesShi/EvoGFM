@@ -4,6 +4,7 @@ import numpy as np
 import scipy.sparse as sp
 import torch
 import torch.nn.functional as F
+from tqdm import tqdm
 
 from .features import node_representations, attention, pair_context
 from .readout import fit_residual, predict_residual
@@ -19,10 +20,25 @@ def three_hop_entries(adjacency, left_ids, right_ids, left, right):
     if len(nodes) * 2 >= len(left_ids):
         return np.asarray((left @ adjacency).multiply(right).sum(1)).ravel()
     result = np.empty(len(left_ids), dtype=adjacency.dtype)
-    for index, node in enumerate(nodes):
+    two_hop_rows = adjacency[nodes] @ adjacency
+    two_hop_rows.sort_indices()
+    for index in range(len(nodes)):
         selected = np.flatnonzero(inverse == index)
-        two_hop = (adjacency[node] @ adjacency).toarray().ravel()
-        result[selected] = opposite[selected] @ two_hop
+        two_hop = two_hop_rows.getrow(index)
+        neighbors = opposite[selected]
+        if not two_hop.nnz:
+            result[selected] = 0
+            continue
+        positions = np.searchsorted(two_hop.indices, neighbors.indices)
+        matched = (positions < two_hop.nnz) & (
+            two_hop.indices[np.minimum(positions, two_hop.nnz - 1)] == neighbors.indices
+        )
+        values = np.zeros(neighbors.nnz, dtype=adjacency.dtype)
+        values[matched] = two_hop.data[positions[matched]]
+        rows = np.repeat(np.arange(len(selected)), np.diff(neighbors.indptr))
+        result[selected] = np.bincount(
+            rows, weights=neighbors.data * values, minlength=len(selected)
+        )
     return result
 
 
@@ -45,7 +61,11 @@ class LinkScorer:
         self.norm = np.sqrt(
             np.asarray(self.weighted.multiply(self.weighted).sum(1)).ravel()
         )
-        self.deg = torch.from_numpy(self.degree).float().log1p()
+        self.inv_degree = 1 / np.maximum(1, self.degree)
+        self.inv_log_degree = 1 / np.log(np.maximum(2, self.degree))
+        self.degree_tensor = torch.from_numpy(self.degree).float()
+        self.norm_tensor = torch.from_numpy(self.norm).float()
+        self.deg = self.degree_tensor.log1p()
         _, amplitude, _, _ = model.programmed(self.state)
         self.amplitude_norm = amplitude.square().sum().sqrt().clamp_min(1e-6)
         self.dense = None
@@ -69,8 +89,8 @@ class LinkScorer:
             common = left.multiply(right)
             structural = [
                 np.asarray(common.sum(1)).ravel(),
-                np.asarray(common @ (1 / np.maximum(1, self.degree))).ravel(),
-                np.asarray(common @ (1 / np.log(np.maximum(2, self.degree)))).ravel(),
+                np.asarray(common @ self.inv_degree).ravel(),
+                np.asarray(common @ self.inv_log_degree).ravel(),
                 three_hop_entries(self.a, ip, jp, left, right),
             ]
             shared = np.asarray(
@@ -96,8 +116,7 @@ class LinkScorer:
         z0, z1, z2 = self.parts
         relation = self.model.relation_logits(self.state, pairs) / self.amplitude_norm
         shared = torch.from_numpy(shared).float()
-        degree = torch.from_numpy(self.degree).float()
-        norm = torch.from_numpy(self.norm).float()
+        degree, norm = self.degree_tensor, self.norm_tensor
         extra = torch.stack(
             (
                 (z1[i] * z1[j]).sum(1),
@@ -116,14 +135,28 @@ class LinkScorer:
         return torch.cat((base, extra), dim=1)
 
     @torch.no_grad()
-    def score(self, pairs, fitted, batch_size=512):
+    def score(self, pairs, fitted, batch_size=512, group_queries=True):
+        # Official order is restored before ranking; every query is retained.
+        order = None
+        if group_queries and self.dense is None and pairs.shape[1] > batch_size:
+            order = pairs[0].argsort(stable=True)
+            pairs = pairs[:, order]
         output = []
-        for batch in pairs.split(batch_size, dim=1):
+        for batch in tqdm(
+            pairs.split(batch_size, dim=1),
+            desc="Scoring link queries",
+            disable=pairs.shape[1] < 100_000,
+        ):
             features = self.features(batch)
             output.append(
                 predict_residual(features, self.head(features).squeeze(1), fitted)
             )
-        return torch.cat(output)
+        scores = torch.cat(output)
+        if order is not None:
+            restored = torch.empty_like(scores)
+            restored[order] = scores
+            return restored
+        return scores
 
 
 def uniform_nonedges(n, edges, count, seed=42):
