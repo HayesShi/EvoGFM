@@ -33,6 +33,7 @@ def calibrate(
     controls=("static", "cumulative", "reset"),
     source_states=None,
     nc_view="masked",
+    nc_shots=None,
 ):
     seed_all(42)
     torch.set_num_threads(threads)
@@ -68,6 +69,17 @@ def calibrate(
                 nc_held.append(ids[:held_count])
             p["nc_adapt"] = torch.cat(nc_train)
             p["nc_held"] = torch.cat(nc_held)
+            if nc_shots:
+                p["nc_selection_supports"] = [
+                    episode(
+                        p["node_y"],
+                        p["nc_adapt"],
+                        torch.Generator().manual_seed(42),
+                        shots=shots,
+                        queries=0,
+                    )[0]
+                    for shots in nc_shots
+                ]
         p["raw"] = raw
         p["state"] = model.state(x, p["state_edges"], 0.6)
         p["tables"] = {}
@@ -258,6 +270,7 @@ def calibrate(
         controls=list(controls),
         source_states=source_states,
         nc_view=nc_view,
+        nc_shots=list(nc_shots) if nc_shots else None,
     )
     save_json(output / f"{task}_configuration.json", settings)
     trajectories = {}
@@ -304,6 +317,7 @@ def calibrate(
                             p["node_y"],
                             p["nc_adapt"],
                             torch.Generator().manual_seed(42 + batch),
+                            shots=nc_shots[batch % len(nc_shots)] if nc_shots else 5,
                         )
                         nc, truth = nc_logits(parts, p["node_y"], support, query)
                         nc_loss = F.cross_entropy(nc, truth)
@@ -343,11 +357,16 @@ def calibrate(
                                     )
                                 )
                             if nc_only:
-                                nc, truth = nc_logits(
-                                    held_parts, p["node_y"], p["nc_adapt"], p["nc_held"]
+                                support_sets = p.get(
+                                    "nc_selection_supports", [p["nc_adapt"]]
                                 )
-                                held_nc = float(F.cross_entropy(nc, truth))
-                                value = held_nc
+                                losses = []
+                                for support in support_sets:
+                                    nc, truth = nc_logits(
+                                        held_parts, p["node_y"], support, p["nc_held"]
+                                    )
+                                    losses.append(F.cross_entropy(nc, truth))
+                                value = float(torch.stack(losses).mean())
                             if source_anchor:
                                 delta = candidate - initial
                                 value += float(
@@ -414,12 +433,15 @@ def run(
     controls=("static", "cumulative", "reset"),
     source_states=None,
     nc_view="masked",
+    nc_shots=None,
 ):
     """Run static/cumulative/reset controls and save the final two-task bank."""
     if set(stream) & set(future):
         raise ValueError("Future domains must be excluded from the adaptation stream")
     if source_anchor < 0:
         raise ValueError("source_anchor must be nonnegative")
+    if nc_shots is not None and (not nc_shots or min(nc_shots) < 1):
+        raise ValueError("nc_shots must contain positive support budgets")
     tasks = ("nc", "lp") if task == "both" else (task,)
     states = {
         name: calibrate(
@@ -435,6 +457,7 @@ def run(
             controls,
             source_states,
             nc_view,
+            nc_shots,
         )
         for name in tasks
     }

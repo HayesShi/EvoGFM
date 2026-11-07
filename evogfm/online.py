@@ -3,6 +3,23 @@ import torch
 from scipy.optimize import minimize
 
 
+def serving_theta(snapshot, prior, strength=1.0):
+    """Scale learned coefficient changes at inference within the saved bounds.
+
+    The optimizer state remains in its original coordinates. This is one shared
+    serving parameter, applied before inverse programming on every target graph.
+    """
+    if not np.isfinite(strength) or strength < 0:
+        raise ValueError("inverse strength must be finite and nonnegative")
+    theta = torch.as_tensor(snapshot["theta"]).to(prior)
+    if strength == 1.0:
+        return theta
+    value = prior + strength * (theta - prior)
+    lower = value.new_tensor(snapshot["lower"])
+    upper = value.new_tensor(snapshot["upper"])
+    return value.clamp(min=lower, max=upper)
+
+
 class OnlineNewton:
     """Box-constrained ONS with a metric (not coordinate-clipping) projection."""
 

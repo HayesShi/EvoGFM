@@ -13,6 +13,12 @@ if __name__ == "__main__":
     parser.add_argument("--task", choices=["both", "nc", "lp"], default="both")
     parser.add_argument("--threads", type=int, default=4)
     parser.add_argument("--nc-view", choices=["masked", "full"], default="masked")
+    parser.add_argument(
+        "--nc-shots",
+        nargs="+",
+        type=int,
+        help="Cycle NC episode budgets and use their mean training-holdout loss for line search",
+    )
     parser.add_argument("--nc-metric", choices=["accuracy", "auto"], default="accuracy")
     parser.add_argument(
         "--controls",

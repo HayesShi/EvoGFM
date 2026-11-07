@@ -1,4 +1,4 @@
-"""Export every V10 accumulation measurement and the paired final-state tables."""
+"""Export saved accumulation measurements and paired final-state tables."""
 
 import argparse
 from collections import defaultdict
@@ -52,13 +52,11 @@ def collect(args):
     root = Path(args.runs)
     selection = read(root / "selection.json")
     pools = {}
-    for name in (
-        "original_pool",
-        "nc1_pool",
-        "revised_pool",
-        "assortative_pool",
-        "test",
-    ):
+    names = selection.get(
+        "required_pools",
+        ["original_pool", "nc1_pool", "revised_pool", "assortative_pool", "test"],
+    )
+    for name in names:
         directory = root / name
         configuration = read(directory / "configuration.json")
         result = read(directory / "results.json")
@@ -116,6 +114,10 @@ def collect(args):
         order: read(Path("runs/round345") / order / "retention/retention.json")
         for order in ("forward", "reverse4")
     }
+    for name in ("retention", "order_retention"):
+        path = root / name / "retention.json"
+        if path.exists():
+            retention[name] = read(path)
     checkpoints = {}
     for pool in pools.values():
         path = pool["configuration"]["checkpoint"]
@@ -140,7 +142,7 @@ def collect(args):
         "",
         "seed 42；数值为百分数，差值为百分点。标签预算为每类标签数，all 使用全部官方训练标签。",
         "初始、reset、累积使用同一目标支持集和 alpha=0.1。reset 每次从源状态出发，只保留当前一张学习图的适应。",
-        "未来图不更新共享参数。测试配置在测试前固定，见 results_accumulation.json 的 selection；其余候选仅列验证结果。",
+        f"未来图不更新共享参数。测试配置在测试分数读取前固定，见 {args.output} 的 selection；其余候选仅列验证结果。",
         "20-shot 与 all 在部分图上使用完全相同的训练节点，不能算作两份独立证据。Tolokers 两版本来自同一物理图。",
         "",
     ]

@@ -30,6 +30,8 @@ The latest [V8 experiments](EXPERIMENTS_V8.md) complete the original-table datas
 
 The [expanded accumulation study](EXPERIMENTS_ACCUMULATION.md) evaluates 20 future-target entries at four label budgets and compares six stream/backbone configurations on validation. With one fixed final state, test accuracy improves by 6.21 points on Computers and 5.16 points on BlogCatalog at one label per class. [Complete tables](ACCUMULATION_TABLES.md) include negative results, both learning orders and all budgets; these use a separate continual-learning protocol.
 
+[V11](EXPERIMENTS_ACCUMULATION_V11.md) retains the same learned coefficients and extends the continual readout to four propagation steps. Test accuracy rises by 8.24 points on DBLP one-shot and 2.97 points on LastFM-Asia twenty-shot versus V10, with declines also reported. It adds ogbn-arxiv as a future target. Use `explore_accumulation.py --hops 4` to reproduce the selected readout; [all candidate results](ACCUMULATION_V11_TABLES.md) are retained.
+
 [Seven complete published comparison tables](BEST_TABLES.md), including PENCIL (ICML 2026), preserve all original baseline rows and dataset columns, adding our best observed V4–V8 results. The [provenance index](best_results.json) identifies each result's version and measurement file. This cross-version development summary is separate from a single fixed-configuration experiment.
 
 ## Install

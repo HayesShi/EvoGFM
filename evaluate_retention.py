@@ -7,15 +7,23 @@ import numpy as np
 import torch
 from tqdm import tqdm
 from evogfm.data import load_graph, load_protocol, save_json
-from evogfm.features import preprocess, contexts, pair_channels, task_features
+from evogfm.features import (
+    preprocess,
+    contexts,
+    pair_channels,
+    task_features,
+    node_representations,
+)
 from evogfm.linear_readout import fit_linear, predict_linear, metric_score
 from evogfm.training import load_checkpoint
+from evogfm.online import serving_theta
 
 
 def evaluate(args):
     torch.set_num_threads(args.threads)
     model, _, _ = load_checkpoint(args.checkpoint)
     model.requires_grad_(False)
+    prior = model.inverse.theta().detach().clone()
     directory = Path(args.states)
     config = json.loads((directory / "nc_configuration.json").read_text())
     stream = config["stream"]
@@ -38,10 +46,18 @@ def evaluate(args):
             fitted = None
             for prefix in range(column + 1, len(snapshots)):
                 model.inverse.set_theta(
-                    torch.as_tensor(snapshots[prefix]["theta"]).float()
+                    serving_theta(snapshots[prefix], prior, args.inverse_strength)
                 )
                 with torch.no_grad():
-                    _, parts = task_features(model, state, raw, edges, dummy, ctx, base)
+                    if args.hops == 2:
+                        _, parts = task_features(
+                            model, state, raw, edges, dummy, ctx, base
+                        )
+                    else:
+                        parts, values = node_representations(
+                            model, state, raw, edges, hops=args.hops
+                        )
+                        parts = parts + [values]
                     features = torch.cat(parts, dim=1)
                     if fitted is None:
                         fitted, _ = fit_linear(
@@ -79,6 +95,8 @@ def evaluate(args):
             seed=42,
             stream=stream,
             split="validation",
+            inverse_strength=args.inverse_strength,
+            hops=args.hops,
             nc_head="first-acquisition fixed alpha0.1 ridge",
             unseen_cells=None,
             summary=summary,
@@ -106,4 +124,6 @@ if __name__ == "__main__":
     parser.add_argument("--checkpoint", default="runs/reference/best.pt")
     parser.add_argument("--data-root", default="data")
     parser.add_argument("--threads", type=int, default=3)
+    parser.add_argument("--inverse-strength", type=float, default=1.0)
+    parser.add_argument("--hops", type=int, choices=range(1, 5), default=2)
     evaluate(parser.parse_args())

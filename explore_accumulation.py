@@ -11,6 +11,7 @@ from evogfm.graphland import load_graphland
 from evogfm.features import preprocess, global_svd_features, node_representations
 from evogfm.linear_readout import fit_linear, predict_linear, metric_score
 from evogfm.training import load_checkpoint
+from evogfm.online import serving_theta
 
 
 def supports(labels, pool, shots, seed=42):
@@ -31,6 +32,7 @@ def evaluate(args):
     torch.set_num_threads(args.threads)
     model, _, checkpoint = load_checkpoint(args.checkpoint)
     model.requires_grad_(False)
+    prior = model.inverse.theta().detach().clone()
     output = Path(args.output)
     experiments = {}
     for path in args.states:
@@ -56,6 +58,8 @@ def evaluate(args):
         datasets=args.datasets,
         budgets=args.budgets,
         alpha=0.1,
+        inverse_strength=args.inverse_strength,
+        hops=args.hops,
         split=args.split,
         shared_updates=0,
         final_only=args.final_only,
@@ -65,6 +69,8 @@ def evaluate(args):
     if args.resume and previous.exists():
         saved = json.loads(previous.read_text(encoding="utf8"))
         saved.setdefault("final_only", False)
+        saved.setdefault("inverse_strength", 1.0)
+        saved.setdefault("hops", 2)
         if saved != configuration:
             raise ValueError("Resume requires the same evaluation configuration")
     save_json(previous, configuration)
@@ -135,13 +141,13 @@ def evaluate(args):
                 for prefix, snapshot in enumerate(snapshots):
                     if args.final_only and prefix not in (0, len(snapshots) - 1):
                         continue
-                    theta = torch.as_tensor(snapshot["theta"]).float()
+                    theta = serving_theta(snapshot, prior, args.inverse_strength)
                     key = theta.numpy().tobytes()
                     if key not in measured:
                         model.inverse.set_theta(theta)
                         with torch.no_grad():
                             parts, values = node_representations(
-                                model, state, raw, edges, hops=2
+                                model, state, raw, edges, hops=args.hops
                             )
                             features = torch.cat(parts + [values], dim=1)
                             fitted_rows = []
@@ -241,6 +247,8 @@ if __name__ == "__main__":
     parser.add_argument("--data-root", default="data")
     parser.add_argument("--output", required=True)
     parser.add_argument("--threads", type=int, default=3)
+    parser.add_argument("--inverse-strength", type=float, default=1.0)
+    parser.add_argument("--hops", type=int, choices=range(1, 5), default=2)
     parser.add_argument("--resume", action="store_true")
     parser.add_argument(
         "--final-only",
