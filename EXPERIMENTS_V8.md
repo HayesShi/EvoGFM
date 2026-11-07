@@ -1,6 +1,6 @@
 # EvoGFM V8：补齐原表基准
 
-更新：2026-11-07T19:45:13。完成数量：GraphAny 31/31；NCN 7/7；HeaRT 小图 3/3、大图 3/4；GraphCL 8/8。
+更新：2026-11-07T20:04:05。完成数量：GraphAny 31/31；NCN 7/7；HeaRT 小图 3/3、大图 4/4；GraphCL 8/8。
 
 这轮补跑缺失数据集，沿用冻结的完整 EvoGFM、既定读出候选及 seed 42。Pubmed、Photo、Texas 分别使用排除对应目标图的两源模型，均训练完整 60 轮、240 次更新，按源验证目标选择 checkpoint。Texas 对应 GraphAny 的 texas_4_classes 版本；单节点稀有类别不进入其发布的训练、验证或测试掩码。
 
@@ -38,6 +38,6 @@ OGB 使用发布 split。Collab 测试可见图加入验证正边；其余任务
 
 无向链路查询将高频端点统一到首端，再按端点分组以复用二跳路径行，打分后恢复官方候选顺序；三跳计数仍为完整训练图上的精确计算。度相关向量和归一化内容只计算一次，查询表征按节点整行连续存储。
 
-本轮不调测试集参数。完整外部对照表见 [BEST_TABLES.md](BEST_TABLES.md)；未完成格保持 —。
+本轮不调测试集参数。完整外部对照表见 [BEST_TABLES.md](BEST_TABLES.md)，逐项测量见 [results_v8.json](results_v8.json)。
 
 原站失效的两个数据集已通过公开论文仓库补齐。[LastFMAsia 原始 NPZ](https://github.com/wuyucheng2002/PPGSL/blob/84b67e2ea709f4740a0cb7b4c11012664bc64f7b/data/LastFMAsia/raw/lastfm_asia.npz) 包含 7,624 节点、128 维特征、18 类；其特征、标签和边与另一仓库的 DGL 缓存逐项一致。[DeezerEurope DGL 缓存](https://github.com/Qy-ds/G-CORMoL/blob/d298647acb960bf09483fc0fd3cdf9ba061c807f/datas/DeezerEurope.bin) 包含 28,281 节点、128 维特征、2 类；边和标签与 LINKX 的独立发布逐项一致。转换只读取缓存中的输入特征、边和标签，不使用这些项目的模型、划分或预测。

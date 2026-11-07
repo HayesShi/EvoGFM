@@ -26,7 +26,7 @@ The model estimates relation directions from each graph and uses one learned inv
 
 The [paper draft](1106-EvoGFM_paper.md) is included unchanged. This release contains the current empirical implementation, including task-conditioned calibration and the LP residual readout. The draft's convex relation-calibration analysis does not provide a regret guarantee for the nonlinear task-logit GGN optimizer used by `continual.py`.
 
-The latest [V8 experiments](EXPERIMENTS_V8.md) extend the frozen model to the missing GraphAny, NCN, HeaRT and GraphCL datasets. Completed coverage is recorded in that report and [results_v8.json](results_v8.json); large-graph runs are still in progress. [V7](EXPERIMENTS_V7.md) contains scarcity and continual-learning experiments, including a six-domain stream and four future-domain probes.
+The latest [V8 experiments](EXPERIMENTS_V8.md) complete the original-table dataset coverage for GraphAny, NCN, HeaRT and GraphCL. Measurements and protocols are recorded in that report and [results_v8.json](results_v8.json). [V7](EXPERIMENTS_V7.md) contains scarcity and continual-learning experiments, including a six-domain stream and four future-domain probes.
 
 [Seven complete published comparison tables](BEST_TABLES.md), including PENCIL (ICML 2026), preserve all original baseline rows and dataset columns, adding our best observed V4–V8 results. The [provenance index](best_results.json) identifies each result's version and measurement file. This cross-version development summary is separate from a single fixed-configuration experiment.
 

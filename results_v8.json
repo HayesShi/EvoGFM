@@ -1,10 +1,10 @@
 {
   "coverage": {
-    "updated": "2026-11-07T19:45:13",
+    "updated": "2026-11-07T20:04:05",
     "node": "31/31",
     "public_lp": "7/7",
     "heart_small": "3/3",
-    "heart_large": "3/4",
+    "heart_large": "4/4",
     "graph": "8/8",
     "missing_nodes": []
   },
@@ -1768,6 +1768,18 @@
       "hits50_percent": 82.32,
       "hits100_percent": 89.103,
       "seconds": 1687.0114279000118
+    },
+    "ogbl-citation2": {
+      "dataset": "ogbl-citation2",
+      "split": "test",
+      "protocol": "official HeaRT",
+      "positive_pairs": 86596,
+      "mrr_percent": 20.593646381762127,
+      "hits10_percent": 38.58838745438588,
+      "hits20_percent": 52.157143517021574,
+      "hits50_percent": 72.12457850247125,
+      "hits100_percent": 85.6702388101067,
+      "seconds": 1131.7086522000027
     },
     "ogbl-ddi": {
       "dataset": "ogbl-ddi",
