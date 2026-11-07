@@ -50,6 +50,8 @@ class LinkScorer:
         self.model, self.head, self.raw = model, head, raw
         self.state = model.state(x, edges, observation_rate)
         self.parts, self.h = node_representations(model, self.state, raw, edges, hops=2)
+        # CSV features can be column-major; queries gather complete node rows.
+        self.parts = [part.contiguous() for part in self.parts]
         self.a, self.degree, self.content0, self.content1, self.content2 = pair_context(
             raw, edges, normalized=self.parts[0]
         )

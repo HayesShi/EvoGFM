@@ -137,11 +137,12 @@ def test_prepared_link_channels_and_head_streaming():
         joint_task_backbone=True,
     ).eval()
     head = torch.nn.Linear(17, 1).eval()
-    raw = torch.rand(31, 8)
+    raw = torch.rand(8, 31).T
     edges = canonical_edges(torch.randint(31, (2, 89)), 31)
     pairs = torch.randint(31, (2, 17))
     with torch.no_grad():
         scorer = LinkScorer(model, head, raw, raw, edges)
+        assert all(part.is_contiguous() for part in scorer.parts)
         state = model.state(raw, edges)
         _, _, transition = node_representations(
             model, state, raw, edges, hops=2, return_transition=True
