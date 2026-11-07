@@ -33,22 +33,23 @@ def join_features(parts, values, weight):
     )
 
 
-def quadratic_features(features, dimension):
+def quadratic_features(features, dimension, device="cpu"):
     generator = torch.Generator().manual_seed(42)
-    w = torch.randn(features.shape[1], dimension, generator=generator)
-    v = torch.randn(features.shape[1], dimension, generator=generator)
+    w = torch.randn(features.shape[1], dimension, generator=generator).to(device)
+    v = torch.randn(features.shape[1], dimension, generator=generator).to(device)
 
     def transform(ids):
         base = features[ids]
-        x = F.normalize(base, dim=1)
-        return torch.cat((base, (x @ w) * (x @ v) / dimension**0.5), dim=1)
+        x = F.normalize(base, dim=1).to(device)
+        sketch = ((x @ w) * (x @ v) / dimension**0.5).cpu()
+        return torch.cat((base, sketch), dim=1)
 
     if isinstance(features, FeatureView):
         return FeatureView(len(features), features.shape[1] + dimension, transform)
     return transform(slice(None))
 
 
-def rbf_features(features, gamma, landmarks=256):
+def rbf_features(features, gamma, landmarks=256, device="cpu"):
     ids = torch.randperm(len(features), generator=torch.Generator().manual_seed(42))[
         :landmarks
     ]
@@ -56,12 +57,13 @@ def rbf_features(features, gamma, landmarks=256):
     gram = (-gamma * (2 - 2 * centers @ centers.T).clamp_min(0)).exp().double()
     eigenvalues, eigenvectors = torch.linalg.eigh(gram)
     basis = (eigenvectors / eigenvalues.clamp_min(1e-6).sqrt()[None, :]).float()
+    device_centers, device_basis = centers.to(device), basis.to(device)
 
     def transform(rows):
         base = features[rows]
-        x = F.normalize(base, dim=1)
-        cross = (-gamma * (2 - 2 * x @ centers.T).clamp_min(0)).exp()
-        return torch.cat((base, cross @ basis), dim=1)
+        x = F.normalize(base, dim=1).to(device)
+        cross = (-gamma * (2 - 2 * x @ device_centers.T).clamp_min(0)).exp()
+        return torch.cat((base, (cross @ device_basis).cpu()), dim=1)
 
     if isinstance(features, FeatureView):
         return FeatureView(len(features), features.shape[1] + len(ids), transform)

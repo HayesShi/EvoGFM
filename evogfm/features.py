@@ -140,27 +140,63 @@ def pair_channels(x, edges, pairs, batch_size=256, prepared=None):
 
 
 def node_representations(
-    model, state, raw, edges, hops=4, uniform=False, return_transition=False
+    model,
+    state,
+    raw,
+    edges,
+    hops=4,
+    uniform=False,
+    return_transition=False,
+    inference_device="cpu",
 ):
     """Keep propagation orders separate so the readout can retain local signal."""
     n = len(raw)
     visible = torch.cat((edges, edges.flip(0)), dim=1)
     visible = visible[:, (visible[0] * n + visible[1]).argsort()]
-    weight = attention(model, state, visible, uniform)
-    h = F.normalize(model.embed_graph(state, visible), dim=1) if n > 100_000 else None
-    value = raw
-    parts = [F.normalize(value, dim=1)]
-    for _ in range(hops):
-        value = weighted_propagate(value, visible, weight)
-        parts.append(F.normalize(value, dim=1))
-    if h is None:
-        h = F.normalize(model.embed_graph(state, visible), dim=1)
-    if return_transition:
+    device_visible = visible.to(state.z.device)
+    weight = attention(model, state, device_visible, uniform).cpu()
+    transition = None
+    if not torch.is_grad_enabled():
         degree = torch.bincount(visible[0], minlength=n)
         offsets = torch.cat((degree.new_zeros(1), degree.cumsum(0)))
         transition = sp.csr_matrix(
-            (weight.detach().numpy(), visible[1].numpy(), offsets.numpy()), shape=(n, n)
+            (weight.numpy(), visible[1].numpy(), offsets.numpy()), shape=(n, n)
         )
+    if inference_device == "cuda":
+        from .cuda_inference import embed_graph_offloaded, cuda_csr
+
+        h = F.normalize(embed_graph_offloaded(model, state, visible), dim=1)
+        value = raw.cuda()
+        gpu_transition = cuda_csr(transition)
+        parts = [F.normalize(raw, dim=1)]
+        for _ in range(hops):
+            value = torch.sparse.mm(gpu_transition, value)
+            parts.append(F.normalize(value, dim=1).cpu())
+        return (parts, h, transition) if return_transition else (parts, h)
+    h = (
+        F.normalize(model.embed_graph(state, device_visible), dim=1).cpu()
+        if n > 100_000
+        else None
+    )
+    value = raw
+    parts = [F.normalize(value, dim=1)]
+    for _ in range(hops):
+        value = (
+            torch.from_numpy(transition @ value.numpy())
+            if transition is not None
+            else weighted_propagate(value, visible, weight)
+        )
+        parts.append(F.normalize(value, dim=1))
+    if h is None:
+        h = F.normalize(model.embed_graph(state, device_visible), dim=1).cpu()
+    if return_transition:
+        if transition is None:
+            degree = torch.bincount(visible[0], minlength=n)
+            offsets = torch.cat((degree.new_zeros(1), degree.cumsum(0)))
+            transition = sp.csr_matrix(
+                (weight.detach().numpy(), visible[1].numpy(), offsets.numpy()),
+                shape=(n, n),
+            )
         return parts, h, transition
     return parts, h
 

@@ -1,13 +1,41 @@
 """Ridge node classification and a small offset-logistic link readout."""
 
+from dataclasses import dataclass
+
 import torch
 import torch.nn.functional as F
 from sklearn.metrics import roc_auc_score
-from .feature_views import FeatureView, join_features, quadratic_features, rbf_features
+from .feature_views import join_features, quadratic_features, rbf_features
 
 
-def ridge(h, y, train, val, alphas=(0.01, 0.1, 1.0, 10.0, 100.0), metric="accuracy"):
-    """Read only train/validation labels. Return fitted scores, not test metrics."""
+@dataclass
+class RidgeFit:
+    features: object
+    mean: torch.Tensor
+    weight: torch.Tensor
+    bias: torch.Tensor
+    validation: torch.Tensor
+    info: dict
+
+    def predict(self):
+        return torch.cat(
+            [
+                ((block.double() - self.mean) @ self.weight + self.bias).float()
+                for block in self.features.split(1024)
+            ]
+        )
+
+
+def fit_ridge(
+    h,
+    y,
+    train,
+    val,
+    alphas=(0.01, 0.1, 1.0, 10.0, 100.0),
+    metric="accuracy",
+    device="cpu",
+):
+    """Fit every alpha, selecting from validation rows before full-graph prediction."""
     # Keep wide graph representations in their original dtype. Only the
     # training system and one prediction block need double precision at once.
     classes = y[train].unique(sorted=True)
@@ -15,92 +43,80 @@ def ridge(h, y, train, val, alphas=(0.01, 0.1, 1.0, 10.0, 100.0), metric="accura
         raise ValueError("metric must be accuracy or auc")
     if metric == "auc" and len(classes) != 2:
         raise ValueError("ROC-AUC readout selection requires two training classes")
-    target = (y[train, None] == classes[None, :]).double()
+    # Tiny systems stay on CPU; large systems use the selected device in
+    # float64, including all five regularization candidates.
+    device = device if min(len(train), h.shape[1]) > 512 else "cpu"
+    target = (y[train, None] == classes[None, :]).double().to(device)
     bias = target.mean(0)
     target = target - bias
     dual = len(train) < h.shape[1]
     if not dual and len(train) * h.shape[1] > 8_000_000:
-        mu = torch.zeros(h.shape[1], dtype=torch.float64)
+        mu = torch.zeros(h.shape[1], dtype=torch.float64, device=device)
         for ids in train.split(1024):
-            mu += h[ids].double().sum(0) / len(train)
-        gram = torch.zeros(h.shape[1], h.shape[1], dtype=torch.float64)
-        rhs = torch.zeros(h.shape[1], len(classes), dtype=torch.float64)
+            mu += h[ids].double().to(device).sum(0) / len(train)
+        gram = torch.zeros(h.shape[1], h.shape[1], dtype=torch.float64, device=device)
+        rhs = torch.zeros(h.shape[1], len(classes), dtype=torch.float64, device=device)
         offset = 0
         for ids in train.split(1024):
-            block = h[ids].double() - mu
+            block = h[ids].double().to(device) - mu
             gram += block.T @ block
             rhs += block.T @ target[offset : offset + len(ids)]
             offset += len(ids)
     else:
-        training = h[train].double()
+        training = h[train].double().to(device)
         mu = training.mean(0)
         a = training - mu
         gram = a @ a.T if dual else a.T @ a
         rhs = target if dual else a.T @ target
     values, vectors = torch.linalg.eigh(gram)
     rhs = vectors.T @ rhs
-    if isinstance(h, FeatureView):
-        # Select alpha from validation rows first. Expensive quadratic/RBF
-        # features for the full graph then need only one prediction pass.
-        weights = []
-        for alpha in alphas:
-            weight = vectors @ (rhs / (values.clamp_min(0) + alpha)[:, None])
-            weights.append(a.T @ weight if dual else weight)
-        joined = torch.cat(weights, dim=1)
-        validation = torch.cat(
-            [(h[ids].double() - mu) @ joined for ids in val.split(1024)]
-        )
-        validation = validation.reshape(len(val), len(alphas), len(classes)) + bias
-        quality = []
-        for index in range(len(alphas)):
-            score = validation[:, index]
-            quality.append(
-                float(roc_auc_score(y[val], score[:, 1] - score[:, 0]))
-                if metric == "auc"
-                else float((classes[score.argmax(1)] == y[val]).double().mean())
-            )
-        chosen = max(range(len(alphas)), key=lambda index: quality[index])
-        weight = weights[chosen]
-        scores = torch.cat(
-            [(block.double() - mu) @ weight + bias for block in h.split(1024)]
-        )
-        info = dict(
-            validation_percent=100
-            * float((classes[scores[val].argmax(1)] == y[val]).double().mean()),
-            alpha=alphas[chosen],
-            dimensions=h.shape[1],
-        )
-        if metric == "auc":
-            info["validation_auc_percent"] = 100 * quality[chosen]
-        return scores.float(), info
-    best = None
+    weights = []
     for alpha in alphas:
         weight = vectors @ (rhs / (values.clamp_min(0) + alpha)[:, None])
-        if dual:
-            weight = a.T @ weight
-        score = torch.cat(
-            [(block.double() - mu) @ weight + bias for block in h.split(1024)]
+        weights.append(a.T @ weight if dual else weight)
+    joined = torch.cat(weights, dim=1)
+    validation = (
+        torch.cat(
+            [(h[ids].double().to(device) - mu) @ joined for ids in val.split(1024)]
+        ).reshape(len(val), len(alphas), len(classes))
+        + bias
+    ).cpu()
+    quality = [
+        (
+            float(roc_auc_score(y[val], score[:, 1] - score[:, 0]))
+            if metric == "auc"
+            else float((classes[score.argmax(1)] == y[val]).double().mean())
         )
-        if metric == "auc":
-            acc = float(
-                roc_auc_score(y[val].numpy(), (score[val, 1] - score[val, 0]).numpy())
-            )
-        else:
-            acc = float((classes[score[val].argmax(1)] == y[val]).double().mean())
-        if best is None or acc > best[0]:
-            best = (acc, alpha, score)
+        for score in validation.unbind(1)
+    ]
+    chosen = max(range(len(alphas)), key=lambda index: quality[index])
     info = dict(
         validation_percent=100
-        * float((classes[best[2][val].argmax(1)] == y[val]).double().mean()),
-        alpha=best[1],
+        * float((classes[validation[:, chosen].argmax(1)] == y[val]).double().mean()),
+        alpha=alphas[chosen],
         dimensions=h.shape[1],
     )
     if metric == "auc":
-        info["validation_auc_percent"] = 100 * best[0]
-    return best[2].float(), info
+        info["validation_auc_percent"] = 100 * quality[chosen]
+    return RidgeFit(
+        h,
+        mu.cpu(),
+        weights[chosen].cpu(),
+        bias.cpu(),
+        validation[:, chosen].float(),
+        info,
+    )
 
 
-def multiscale_ridge(parts, values, y, train, val, metric="accuracy"):
+def ridge(h, y, train, val, alphas=(0.01, 0.1, 1.0, 10.0, 100.0), metric="accuracy"):
+    """Read only train/validation labels. Return fitted scores, not test metrics."""
+    fitted = fit_ridge(h, y, train, val, alphas, metric)
+    return fitted.predict(), fitted.info
+
+
+def _multiscale_fit(
+    parts, values, y, train, val, metric="accuracy", kernel_device="cpu"
+):
     """Select a small fixed family of graph filters on validation labels.
 
     The quadratic sketch approximates a degree-two polynomial kernel. Its
@@ -117,20 +133,45 @@ def multiscale_ridge(parts, values, y, train, val, metric="accuracy"):
     for name, hops, weight, quadratic in specs:
         features = join_features(parts[: hops + 1], values, weight)
         if quadratic:
-            features = quadratic_features(features, 512)
-        scores, info = ridge(features, y, train, val, metric=metric)
+            features = quadratic_features(features, 512, device=kernel_device)
+        fitted = fit_ridge(features, y, train, val, metric=metric, device=kernel_device)
+        info = fitted.info
         value = info[
             "validation_auc_percent" if metric == "auc" else "validation_percent"
         ]
         records.append(dict(variant=name, **info))
         if best is None or value > best[0]:
-            best = (value, scores, dict(variant=name, **info))
+            best = (value, fitted, dict(variant=name, **info))
     return best[1], dict(**best[2], candidates=records)
+
+
+def multiscale_ridge(
+    parts, values, y, train, val, metric="accuracy", kernel_device="cpu"
+):
+    fitted, info = _multiscale_fit(parts, values, y, train, val, metric, kernel_device)
+    return fitted.predict(), info
 
 
 def diffuse_labels(scores, y, train, transition, alpha, steps=20):
     """Restart at model predictions and clamp only labeled training nodes."""
     import numpy as np
+
+    if isinstance(transition, torch.Tensor):
+        device = transition.device
+        prior = (8 * scores).softmax(1).to(device)
+        classes = y[train].unique(sorted=True)
+        target = (y[train, None] == classes[None, :]).float().to(device)
+        support = train.to(device)
+        offsets = transition.crow_indices()
+        isolated = offsets[1:] == offsets[:-1]
+        probabilities = prior.clone()
+        for _ in range(steps):
+            probabilities = (1 - alpha) * prior + alpha * torch.sparse.mm(
+                transition, probabilities
+            )
+            probabilities[isolated] = prior[isolated]
+            probabilities[support] = target
+        return probabilities.cpu()
 
     prior = (8 * scores).softmax(1).numpy()
     classes = y[train].unique(sorted=True)
@@ -147,6 +188,25 @@ def diffuse_labels(scores, y, train, transition, alpha, steps=20):
 def correct_labels(scores, y, train, transition, alpha=0.8, steps=20):
     """Diffuse training prediction errors, then rescale using training errors only."""
     import numpy as np
+
+    if isinstance(transition, torch.Tensor):
+        device = transition.device
+        prior = (8 * scores).softmax(1)
+        classes = y[train].unique(sorted=True)
+        residual = torch.zeros_like(prior)
+        residual[train] = (y[train, None] == classes[None, :]).float() - prior[train]
+        residual = residual.to(device)
+        support = train.to(device)
+        error = residual.clone()
+        for _ in range(steps):
+            error = (1 - alpha) * residual + alpha * torch.sparse.mm(transition, error)
+        magnitude = np.abs(error[support].cpu().numpy()).mean()
+        scale = np.abs(residual[support].cpu().numpy()).mean() / max(
+            float(magnitude), 1e-8
+        )
+        corrected = (prior.to(device) + float(scale) * error).clamp_min(1e-8)
+        corrected /= corrected.sum(1, keepdim=True)
+        return corrected.cpu()
 
     prior = (8 * scores).softmax(1).numpy()
     classes = y[train].unique(sorted=True)
@@ -179,7 +239,15 @@ def nystrom_features(features, gamma, landmarks=256):
 
 
 def enhanced_ridge(
-    parts, values, y, train, val, transition, metric="accuracy", advanced=False
+    parts,
+    values,
+    y,
+    train,
+    val,
+    transition,
+    metric="accuracy",
+    advanced=False,
+    kernel_device="cpu",
 ):
     """Multiscale ridge, a larger quadratic sketch and train-label diffusion.
 
@@ -193,30 +261,51 @@ def enhanced_ridge(
             return 100 * float(roc_auc_score(y[val], scores[val, 1] - scores[val, 0]))
         return 100 * float((classes[scores[val].argmax(1)] == y[val]).double().mean())
 
-    scores, info = multiscale_ridge(parts, values, y, train, val, metric)
-    best_value = measure(scores)
+    fitted, info = _multiscale_fit(parts, values, y, train, val, metric, kernel_device)
+
+    def measure_validation(scores):
+        if metric == "auc":
+            return 100 * float(roc_auc_score(y[val], scores[:, 1] - scores[:, 0]))
+        return 100 * float((classes[scores.argmax(1)] == y[val]).double().mean())
+
+    best_value = measure_validation(fitted.validation)
     best_info = dict(variant=info["variant"], alpha=info["alpha"], diffusion=0.0)
     records = [dict(**best_info, validation_score_percent=best_value)]
     features = join_features(parts[:5], values, 0.5)
-    expanded = quadratic_features(features, 2048)
-    candidate, fit = ridge(expanded, y, train, val, metric=metric)
-    score_value = measure(candidate)
-    configuration = dict(variant="quadratic2048", alpha=fit["alpha"], diffusion=0.0)
+    expanded = quadratic_features(features, 2048, device=kernel_device)
+    candidate = fit_ridge(expanded, y, train, val, metric=metric, device=kernel_device)
+    score_value = measure_validation(candidate.validation)
+    configuration = dict(
+        variant="quadratic2048", alpha=candidate.info["alpha"], diffusion=0.0
+    )
     records.append(dict(**configuration, validation_score_percent=score_value))
     if score_value > best_value + 0.1:
-        scores, best_value, best_info = candidate, score_value, configuration
+        fitted, best_value, best_info = candidate, score_value, configuration
     if advanced:
         for gamma in (1.0, 4.0):
-            candidate, fit = ridge(
-                rbf_features(features, gamma), y, train, val, metric=metric
+            candidate = fit_ridge(
+                rbf_features(features, gamma, device=kernel_device),
+                y,
+                train,
+                val,
+                metric=metric,
+                device=kernel_device,
             )
-            score_value = measure(candidate)
+            score_value = measure_validation(candidate.validation)
             configuration = dict(
-                variant=f"rbf{gamma:g}", alpha=fit["alpha"], diffusion=0.0
+                variant=f"rbf{gamma:g}", alpha=candidate.info["alpha"], diffusion=0.0
             )
             records.append(dict(**configuration, validation_score_percent=score_value))
             if score_value > best_value + 0.1:
-                scores, best_value, best_info = candidate, score_value, configuration
+                fitted, best_value, best_info = candidate, score_value, configuration
+    scores = fitted.predict()
+    if kernel_device != "cpu":
+        transition = torch.sparse_csr_tensor(
+            torch.from_numpy(transition.indptr).to(kernel_device),
+            torch.from_numpy(transition.indices).to(kernel_device),
+            torch.from_numpy(transition.data).to(kernel_device),
+            size=transition.shape,
+        )
     base = scores
     base_info = best_info.copy()
     for alpha in (0.5, 0.9):

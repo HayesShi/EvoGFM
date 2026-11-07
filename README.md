@@ -36,7 +36,7 @@ The [expanded accumulation study](EXPERIMENTS_ACCUMULATION.md) evaluates 20 futu
 
 ## Install
 
-Python 3.10+ and PyTorch 2.6. The current commands run on CPU with four threads; a GPU is not required.
+Python 3.10+ and PyTorch 2.5–2.6. The default commands run on CPU with four threads; a GPU is not required.
 
 ```bash
 git clone https://github.com/HayesShi/EvoGFM.git
@@ -67,6 +67,16 @@ python evaluate.py --ablation zero-inverse
 # Stream Cora -> Citeseer; measure Roman-empire as the future domain.
 python continual.py
 ```
+
+The [V12 efficiency study](EXPERIMENTS_EFFICIENCY_V12.md) uses one CUDA path for small, medium and large graphs: full graph inference in blocks, sparse propagation, and GPU readout, with eight CPU threads. It retains every layer, head, edge and all 35 ridge candidates. On ogbn-products, full adaptation falls from 838.25 s on the earlier CPU setup to 78.98 s, with the same test accuracy. Under an equal 996-label arxiv budget, it takes 1.85 s versus GraphAny's 5.63 s and reaches 50.07% versus 46.99%. The complete-label arxiv and products comparisons still favor GraphAny in time; all measurements are retained in the report and [JSON](results_efficiency_v12.json).
+
+With a CUDA-enabled PyTorch installation, run the same path on all three sizes:
+
+```bash
+python evaluate.py --checkpoint runs/reference/best.pt --nc cora ogbn-arxiv ogbn-products --lp --node-readout advanced --threads 8 --inference-device cuda --kernel-device cuda --output runs/unified_cuda
+```
+
+The CUDA path supports the frame-aligned coupled model. Graph and feature storage stays on CPU; all graph inference uses the same fixed block sizes. `benchmark_efficiency.py` records complete adaptation time, loading time, memory, labels and every fitted candidate; baseline setup and matching commands are in the V12 report.
 
 The expanded experiments add four heterophily graphs and official HeaRT hard negatives:
 

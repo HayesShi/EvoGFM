@@ -354,6 +354,14 @@ class ProgrammedLayer(nn.Module):
         v = self.value(x).reshape(n, self.heads, self.rank)
         target, source = edge_index
         out = h.new_zeros(n, self.heads, self.rank)
+        sparse_indices = None
+        # Callers order visible edges by destination; preserve that order
+        # while replacing E-by-rank gathers with a CSR matrix product.
+        if bool((target[1:] >= target[:-1]).all()):
+            offsets = torch.cat(
+                (target.new_zeros(1), torch.bincount(target, minlength=n).cumsum(0))
+            )
+            sparse_indices = (source, offsets)
         for head in range(self.heads):
             scores = h.new_empty(len(target))
             for start in range(0, len(target), batch_size):
@@ -367,14 +375,32 @@ class ProgrammedLayer(nn.Module):
             weights = (scores - maximum[target]).exp()
             denominator = weights.new_zeros(n).index_add_(0, target, weights)
             weights /= denominator[target].clamp_min(1e-12)
-            accumulated = h.new_zeros(n, self.rank)
-            for start in range(0, len(target), batch_size):
-                stop = min(start + batch_size, len(target))
-                accumulated.index_add_(
-                    0,
-                    target[start:stop],
-                    weights[start:stop, None] * v[source[start:stop], head],
-                )
+            if sparse_indices is not None:
+                columns, offsets = sparse_indices
+                if h.device.type == "cpu":
+                    import scipy.sparse as sp
+
+                    matrix = sp.csr_matrix(
+                        (weights.numpy(), columns.numpy(), offsets.numpy()),
+                        shape=(n, n),
+                    )
+                    accumulated = torch.from_numpy(
+                        matrix @ v[:, head].contiguous().numpy()
+                    )
+                else:
+                    matrix = torch.sparse_csr_tensor(
+                        offsets, columns, weights, size=(n, n)
+                    )
+                    accumulated = torch.sparse.mm(matrix, v[:, head].contiguous())
+            else:
+                accumulated = h.new_zeros(n, self.rank)
+                for start in range(0, len(target), batch_size):
+                    stop = min(start + batch_size, len(target))
+                    accumulated.index_add_(
+                        0,
+                        target[start:stop],
+                        weights[start:stop, None] * v[source[start:stop], head],
+                    )
             out[:, head] = accumulated
         del x, q, k, v, scores, weights, accumulated
         h = h + self.output(out.reshape(n, -1))

@@ -151,6 +151,8 @@ def evaluate(
     nc_metric="accuracy",
     shots=0,
     edge_rate=1.0,
+    kernel_device="cpu",
+    inference_device="cpu",
 ):
     if shots < 0 or not 0 < edge_rate <= 1:
         raise ValueError("shots must be nonnegative and edge_rate must be in (0, 1]")
@@ -207,6 +209,7 @@ def evaluate(
                     edges,
                     hops=2 if node_readout == "current" else 4,
                     return_transition=True,
+                    inference_device=inference_device,
                 )
             if node_readout in ("enhanced", "advanced"):
                 scores, info = enhanced_ridge(
@@ -218,6 +221,7 @@ def evaluate(
                     transition,
                     metric=metric,
                     advanced=node_readout == "advanced",
+                    kernel_device=kernel_device,
                 )
             elif node_readout == "adaptive":
                 scores, info = multiscale_ridge(
@@ -227,6 +231,7 @@ def evaluate(
                     train,
                     protocol["val"],
                     metric=metric,
+                    kernel_device=kernel_device,
                 )
             else:
                 scores, info = ridge(
@@ -289,6 +294,8 @@ def evaluate(
         seed=42,
         checkpoint=str(checkpoint),
         source_epoch=ckpt["epoch"],
+        kernel_device=kernel_device,
+        inference_device=inference_device,
         ablation=ablation,
         rows=rows,
     )

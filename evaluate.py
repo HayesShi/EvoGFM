@@ -16,6 +16,18 @@ if __name__ == "__main__":
     parser.add_argument("--lp", nargs="*", default=["cora", "citeseer"])
     parser.add_argument("--threads", type=int, default=4)
     parser.add_argument(
+        "--inference-device",
+        choices=["cpu", "cuda"],
+        default="cpu",
+        help="Stream full NC inference on CUDA with graph storage on CPU",
+    )
+    parser.add_argument(
+        "--kernel-device",
+        choices=["cpu", "cuda"],
+        default="cpu",
+        help="Device for readout projections, ridge systems and label diffusion",
+    )
+    parser.add_argument(
         "--node-readout",
         choices=["current", "adaptive", "enhanced", "advanced"],
         default="current",
