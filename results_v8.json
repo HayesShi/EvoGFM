@@ -1,8 +1,8 @@
 {
   "coverage": {
-    "updated": "2026-11-07T18:07:14",
+    "updated": "2026-11-07T18:26:47",
     "node": "31/31",
-    "public_lp": "5/7",
+    "public_lp": "6/7",
     "heart_small": "3/3",
     "heart_large": "1/4",
     "graph": "8/8",
@@ -1698,6 +1698,14 @@
       "positive_pairs": 46329,
       "hits50_percent": 64.71540503788124,
       "seconds": 50.61389510000299
+    },
+    "ogbl-ppa": {
+      "dataset": "ogbl-ppa",
+      "split": "test",
+      "protocol": "official OGB shared negative pool",
+      "positive_pairs": 3031780,
+      "hits100_percent": 43.43177935074445,
+      "seconds": 988.313868199999
     },
     "ogbl-ddi": {
       "dataset": "ogbl-ddi",

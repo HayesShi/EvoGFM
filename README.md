@@ -28,7 +28,7 @@ The [paper draft](1106-EvoGFM_paper.md) is included unchanged. This release cont
 
 The latest [V8 experiments](EXPERIMENTS_V8.md) extend the frozen model to the missing GraphAny, NCN, HeaRT and GraphCL datasets. Completed coverage is recorded in that report and [results_v8.json](results_v8.json); large-graph runs are still in progress. [V7](EXPERIMENTS_V7.md) contains scarcity and continual-learning experiments, including a six-domain stream and four future-domain probes.
 
-[Six complete published comparison tables](BEST_TABLES.md) preserve all original baseline rows and dataset columns, adding our best observed V4–V8 results. The [provenance index](best_results.json) identifies each result's version and measurement file. This cross-version development summary is separate from a single fixed-configuration experiment.
+[Seven complete published comparison tables](BEST_TABLES.md), including PENCIL (ICML 2026), preserve all original baseline rows and dataset columns, adding our best observed V4–V8 results. The [provenance index](best_results.json) identifies each result's version and measurement file. This cross-version development summary is separate from a single fixed-configuration experiment.
 
 ## Install
 
@@ -217,6 +217,7 @@ prepare.py                  Download data and create evaluation splits
 train.py                    Source training
 evaluate.py                 Public NC / LP evaluation and inverse ablation
 heart.py                    Official HeaRT hard-negative evaluation
+link_benchmark.py           Official OGB and large-graph HeaRT evaluation
 classify_graphs.py          Frozen graph representations and nested SVM evaluation
 continual.py                Task-conditioned stream experiments
 evaluate_future.py          Replay saved continual states on future domains
@@ -233,12 +234,14 @@ EXPERIMENTS.md              Expanded experiments and mechanism findings
 EXPERIMENTS_V5.md           Larger datasets, harder tasks and V5 comparisons
 EXPERIMENTS_V6.md           Eleven graphs, joint scarcity and graph pooling
 EXPERIMENTS_V7.md           Sixteen graphs, graph-label efficiency and six-domain streams
-BEST_TABLES.md              Five complete published tables with our best results
+EXPERIMENTS_V8.md           Remaining original-table datasets and large-graph protocols
+BEST_TABLES.md              Seven published tables with our development results
 best_results.json           Cross-version best-result provenance
 results.json                Measured development results
 results_v5.json             V5 measured results and PROTEINS folds
 results_v6.json             V6 measured results, folds and continual matrices
 results_v7.json             V7 measurements, support indices and future trajectories
+results_v8.json             V8 measurements and completion status
 1106-EvoGFM_paper.md         Original supplied manuscript draft
 ```
 

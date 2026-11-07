@@ -1,6 +1,6 @@
 # EvoGFM V8：补齐原表基准
 
-更新：2026-11-07T18:07:14。完成数量：GraphAny 31/31；NCN 5/7；HeaRT 小图 3/3、大图 1/4；GraphCL 8/8。
+更新：2026-11-07T18:26:47。完成数量：GraphAny 31/31；NCN 6/7；HeaRT 小图 3/3、大图 1/4；GraphCL 8/8。
 
 这轮补跑缺失数据集，沿用冻结的完整 EvoGFM、既定读出候选及 seed 42。Pubmed、Photo、Texas 分别使用排除对应目标图的两源模型，均训练完整 60 轮、240 次更新，按源验证目标选择 checkpoint。Texas 对应 GraphAny 的 texas_4_classes 版本；单节点稀有类别不进入其发布的训练、验证或测试掩码。
 
