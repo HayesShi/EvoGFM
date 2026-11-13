@@ -7,6 +7,7 @@ name = "evogfm"
 version = "0.1.0"
 description = "Graph-conditioned inverse attention with task calibration"
 readme = "README.md"
+license = {file = "LICENSE"}
 requires-python = ">=3.10"
 dependencies = [
     "torch>=2.5,<2.7",
@@ -20,6 +21,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+plots = ["matplotlib>=3.8,<4"]
 dev = ["pytest>=8,<10", "black==25.1.0", "ruff>=0.9,<1"]
 benchmarks = ["psutil>=5.9,<8", "threadpoolctl>=3.1,<4", "einops>=0.6,<1", "omegaconf>=2.3,<3"]
 

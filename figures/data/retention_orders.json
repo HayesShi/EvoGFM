@@ -1,0 +1,20 @@
+{
+  "42": [
+    "cora",
+    "cornell",
+    "minesweeper",
+    "citeseer"
+  ],
+  "43": [
+    "chameleon",
+    "dblp",
+    "tolokers",
+    "cornell"
+  ],
+  "44": [
+    "actor",
+    "minesweeper",
+    "questions",
+    "coauthor-cs"
+  ]
+}

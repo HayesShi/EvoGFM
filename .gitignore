@@ -18,3 +18,12 @@ venv/
 .env.*
 .DS_Store
 Thumbs.db
+
+# Generated experiment snapshots belong under runs/.
+/results*.json
+/best_results.json
+
+# Small, versioned reproduction inputs.
+!/checkpoints/reference.pt
+!/figures/data/
+!/figures/data/*
