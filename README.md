@@ -58,6 +58,9 @@ Add `--dry-run` to inspect the plan or `--device cuda` for NC evaluation on GPU.
 See the [reproduction guide](docs/reproduction.md) for datasets, seeds, protocols,
 checkpoint configuration, external baselines and timing rules.
 
+The [baseline results and airport diagnosis](docs/baseline_results.md) include
+seed-level CSV measurements, completed comparisons and remaining baseline work.
+
 ## Figures
 
 ```bash

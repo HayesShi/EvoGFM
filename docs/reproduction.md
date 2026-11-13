@@ -92,6 +92,75 @@ retained with that overlap. GraphKeeper historical plots retain native expert
 routing and restrict predictions to known graph classes. Correct-expert scores
 are diagnostic results and are separate from these trajectories.
 
+## Additional baseline controls
+
+The new controls preserve the original source checkpoint, graph splits and
+support sampler. Airport input changes are separate diagnostics. They do not
+change `evogfm/` preprocessing or overwrite the main NC run.
+
+```bash
+python -m experiments.baseline_feature_ridge --data-root data --output runs/feature_ridge
+python -m experiments.airport_inputs --data-root data --output runs/airport_inputs
+```
+
+The second command exports shared input NPZ files and the exact support/test
+IDs. In each baseline's official environment, run its unchanged model through
+the adapter (replace the uppercase paths below with local paths):
+
+```bash
+python experiments/baseline_airport.py graphany --official GRAPHANY_SOURCE --checkpoint GRAPHANY_CHECKPOINT --inputs runs/airport_inputs --output runs/graphany_quantile
+python experiments/baseline_airport.py graphpfn --official GRAPHPFN_SOURCE/src --checkpoint GRAPHPFN_ADAPTER --limix LIMIX_CHECKPOINT --inputs runs/airport_inputs --output runs/graphpfn_quantile --graph air-brazil --seed 42 --shots 5
+```
+
+GraphAny runs all 27 airport episodes by default. Run the GraphPFN command once
+per graph, seed and budget to release ensemble memory between processes. Both
+default to `degree_quantile64`; pass `--policy degree64` and a new output path
+for the earlier encoding. GraphAny uses official least-squares channel readouts;
+GraphPFN uses the full ten-member ensemble. DGL belongs to these separate
+official environments. The measured GraphAny runtime used PyTorch 2.1.2 and
+DGL 2.2.1; GraphPFN used PyTorch 2.4.0 and DGL 2.4.0 on CPU.
+
+For original inputs on any of the ten NC graphs, export the shared data first:
+
+```bash
+python -m experiments.export_nc_inputs --data-root data --output runs/nc_inputs --graphs lastfm-asia
+```
+
+Then supply `--inputs runs/nc_inputs --policy identity --graph lastfm-asia` to
+the same adapter. Here `identity` labels the original-input policy; it does not
+replace a graph's native features with node IDs. Larger GraphPFN runs need more
+than the current 2 GB WSL budget. The LastFM attempt ended in a kernel-confirmed
+out-of-memory kill before its first ensemble member completed and is not scored.
+
+SCGFM uses an unmodified checkout of
+[Xd-He/SCGFM](https://github.com/Xd-He/SCGFM) and the base EvoGFM environment
+with the optional POT dependency:
+
+```bash
+python -m pip install -e ".[scgfm]"
+python -m experiments.baseline_scgfm train --official SCGFM_SOURCE --data-root data --output runs/scgfm --device cuda
+python -m experiments.baseline_scgfm evaluate --official SCGFM_SOURCE --data-root data --output runs/scgfm --device cuda --stream --graphs air-brazil air-eu air-us wikics blogcatalog lastfm-asia wiki coauthor-physics deezer ogbn-arxiv
+```
+
+Training retains the complete official Photo+Computers configuration, all 5391
+source ego-graphs and 60 epochs. The command above evaluates all ten graphs;
+without `--graphs`, evaluation defaults to the three airport graphs.
+`--stream` materializes the support embeddings and predicts every original test
+node in blocks. The full graph, original feature width, official PPR and encoder
+remain unchanged. For the 27 airport episodes, all 6669 test predictions matched
+the original full-embedding implementation. Without streaming, full embeddings
+retain 32 times the original feature width and can require substantial memory.
+A ten-graph mean is reported only after all ten graphs have all three seeds.
+
+For the matched structural-input diagnostic, reuse that source checkpoint in
+a separate result directory:
+
+```bash
+python -m experiments.baseline_scgfm evaluate --official SCGFM_SOURCE --data-root data --checkpoint runs/scgfm/checkpoint/model.pt --output runs/scgfm_degree64 --stream --input-directory runs/airport_inputs/inputs --input-policy degree64
+```
+
+Repeat with `--input-policy degree_quantile64` and another output directory.
+
 ## Plotting
 
 ```bash

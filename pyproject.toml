@@ -24,6 +24,7 @@ dependencies = [
 plots = ["matplotlib>=3.8,<4"]
 dev = ["pytest>=8,<10", "black==25.1.0", "ruff>=0.9,<1"]
 benchmarks = ["psutil>=5.9,<8", "threadpoolctl>=3.1,<4", "einops>=0.6,<1", "omegaconf>=2.3,<3"]
+scgfm = ["POT==0.9.7.post1"]
 
 [tool.setuptools.packages.find]
 include = ["evogfm*"]
