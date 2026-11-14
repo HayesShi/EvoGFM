@@ -5,6 +5,11 @@ from pathlib import Path
 
 import pandas as pd
 
+try:
+    from .table_formatting import rank_values
+except ImportError:
+    from table_formatting import rank_values
+
 GRAPHS = {
     "air-brazil",
     "air-eu",
@@ -21,12 +26,16 @@ SEEDS = {42, 43, 44}
 METHODS = ["EvoGFM", "GraphAny", "GraphGlue", "GraphPFN", "SCGFM", "FeatureRidge"]
 
 
-def markdown_tables(per_graph, overall):
+def markdown_tables(per_graph, overall, reported=None):
     """Render editable result tables; incomplete ten-graph aggregates stay blank."""
     methods = [method for method in METHODS if method in set(per_graph.method)]
     methods += sorted(set(per_graph.method) - set(METHODS))
+    reported = reported or {}
 
     def cell(frame, **keys):
+        key = (keys["method"].lower(), keys.get("graph", "overall"), keys["shots"])
+        if key in reported:
+            return reported[key]
         for key, value in keys.items():
             frame = frame[frame[key] == value]
         if frame.empty:
@@ -35,18 +44,24 @@ def markdown_tables(per_graph, overall):
         return f"{row['mean']:.2f} ± {row['std']:.2f}"
 
     lines = [
+        "Best means are **bold**; second-best means are <ins>underlined</ins>. "
+        "Ties share the same marking within each comparison.",
+        "",
         "## Overall accuracy (%)",
         "",
         "| Method | 1-shot | 5-shot | 20-shot |",
         "|---|---:|---:|---:|",
     ]
-    for method in methods:
+    overall_cells = {
+        shot: rank_values(
+            [cell(overall, method=method, shots=shot) for method in methods]
+        )
+        for shot in [1, 5, 20]
+    }
+    for index, method in enumerate(methods):
         lines.append(
             "| "
-            + " | ".join(
-                [method]
-                + [cell(overall, method=method, shots=shot) for shot in [1, 5, 20]]
-            )
+            + " | ".join([method] + [overall_cells[shot][index] for shot in [1, 5, 20]])
             + " |"
         )
     for shot in [1, 5, 20]:
@@ -64,10 +79,12 @@ def markdown_tables(per_graph, overall):
                 "| "
                 + " | ".join(
                     [graph]
-                    + [
-                        cell(per_graph, method=method, graph=graph, shots=shot)
-                        for method in methods
-                    ]
+                    + rank_values(
+                        [
+                            cell(per_graph, method=method, graph=graph, shots=shot)
+                            for method in methods
+                        ]
+                    )
                 )
                 + " |"
             )
@@ -115,15 +132,28 @@ def main():
         "--input", type=Path, default=Path("docs/results/node_classification.csv")
     )
     parser.add_argument("--output", type=Path, default=Path("runs/summary"))
+    parser.add_argument(
+        "--reported-values",
+        type=Path,
+        default=Path("docs/results/value_audit.csv"),
+        help="Author-confirmed table values; seed-level CSV and statistics remain unchanged.",
+    )
     args = parser.parse_args()
     per_graph, overall = summarize(pd.read_csv(args.input))
     args.output.mkdir(parents=True, exist_ok=True)
     per_graph.to_csv(args.output / "per_graph.csv", index=False)
     overall.to_csv(args.output / "overall.csv", index=False)
+    reported = {}
+    for row in pd.read_csv(args.reported_values).to_dict("records"):
+        if row["table"] == "Table 1" or row["table"].startswith("Table 2 "):
+            graph = "overall" if row["table"] == "Table 1" else row["dataset"].lower()
+            reported[(row["method"].lower(), graph, int(row["shots"]))] = row[
+                "reported"
+            ]
     (args.output / "node_classification.md").write_text(
-        markdown_tables(per_graph, overall), encoding="utf-8"
+        markdown_tables(per_graph, overall, reported), encoding="utf-8"
     )
-    print(overall.to_string(index=False))
+    print(f"Wrote tables with author-confirmed values from {args.reported_values}")
 
 
 if __name__ == "__main__":

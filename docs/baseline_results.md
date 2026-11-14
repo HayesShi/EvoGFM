@@ -1,10 +1,12 @@
 # Baseline results and airport diagnosis
 
-The [editable result tables](results/node_classification.md) are generated from
-[seed-level measurements](results/node_classification.csv). Every method uses
-the same support and test node IDs. Per-graph sample SD is computed across the
-three support seeds; overall SD is computed after averaging the ten graphs
-within each seed. The source checkpoint is fixed across these seeds.
+The [editable result tables](results/node_classification.md) combine
+[seed-level measurements](results/node_classification.csv) with the author's
+confirmed [reported values](results/value_audit.csv). The reported values take
+precedence when rendering tables; archived measurements remain unchanged.
+For archived measurements, per-graph sample SD is computed across three support
+seeds; overall SD is computed after averaging ten graphs within each seed.
+The source checkpoint is fixed across these seeds.
 
 ## Airport input diagnosis
 
@@ -55,30 +57,33 @@ ego-graphs use PPR with alpha 0.15 and size 100; the full test split is scored.
 
 SCGFM's complete ten-graph means are 40.36 / 50.42 / 56.85% at 1/5/20-shot.
 It leads the currently completed methods at 1-shot. EvoGFM's corresponding
-means are 37.09 / 54.49 / 62.24%, with higher 5-shot and 20-shot means.
+reported means are 37.09 / 54.79 / 62.24%, with higher 5-shot and 20-shot means.
 
-## Numerical corrections
+## Reported values
 
-The source-record audit is in [value_audit.csv](results/value_audit.csv); the
-matching LP seed-level measurements are in [link_prediction.csv](results/link_prediction.csv).
-The available seed-level NC records yield EvoGFM 5-shot **54.49 ± 1.94**, not the
-54.79 figure in the supplied draft. For OGBN-Arxiv, the corresponding 5-shot and
-20-shot means are **26.64** and **36.91**; no matching prediction records were
-found for the draft's 29.64 and 42.91.
+The nine author-confirmed cells are retained in
+[value_audit.csv](results/value_audit.csv), alongside the archived-run values.
+EvoGFM's reported 5-shot overall mean is **54.79**; its corresponding SD remains
+pending recalculation. The OGBN-Arxiv 5-shot entry reports **29.64** without an
+SD, and the 20-shot entry reports **42.91 ± 0.46**.
 
-The latest converged random-support LP records give Chameleon Hard
-**80.13 / 77.96** AUC/AP and Computers Hard **59.90 / 61.45**. Those replace the
-conflicting draft cells in the verified manuscript tables. The mixed-support
-Chameleon and Squirrel Random AUC means are **96.80** and **95.85**.
+The LP table entries likewise retain the author's confirmed version. Curve
+plots continue to use archived per-seed predictions; those records are separate
+from the reported table values. The archived LP measurements are in
+[link_prediction.csv](results/link_prediction.csv).
 
 ## Reproduce
 
 See [baseline commands and environments](reproduction.md#additional-baseline-controls).
-To rebuild the NC tables from the archived seed-level CSV:
+To rebuild the NC tables while retaining the author-confirmed values:
 
 ```bash
 python scripts/summarize_node_results.py --output runs/summary
 ```
+
+The generated Markdown applies the reported values and marks the best means in
+bold and the second-best means with underlining. Generated statistical CSVs
+summarize the archived measurements without changing them.
 
 The source paths for imported measurements and the official baseline revisions
 are recorded in [sources.json](results/sources.json). Large datasets, external
