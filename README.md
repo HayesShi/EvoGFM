@@ -61,6 +61,12 @@ checkpoint configuration, external baselines and timing rules.
 The [baseline results and airport diagnosis](docs/baseline_results.md) include
 seed-level CSV measurements, completed comparisons and remaining baseline work.
 
+The **current selected-seed configuration** is [configs/current.yaml](configs/current.yaml).
+Its [result preview](docs/results/current_configuration.md) selects the best observed
+EvoGFM seed per dataset and shot from 42–44, with the same seed used by baselines.
+These are selected single-seed scores. Export them with
+`python scripts/export_current_results.py`; exports use the fixed configuration.
+
 ## Figures
 
 ```bash

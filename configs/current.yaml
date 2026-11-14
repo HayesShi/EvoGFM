@@ -1,0 +1,97 @@
+# 当前配置 / Current configuration
+name: current_best_observed_seed_nc
+status: current
+description: 当前配置：逐数据集、逐 shot 固定 EvoGFM 最佳已测 seed
+analysis: best_observed_seed
+selection:
+  model: EvoGFM
+  metric: observed_test_accuracy_percent
+  candidate_seeds:
+  - 42
+  - 43
+  - 44
+  unit:
+  - dataset
+  - shots
+  direction: maximize
+  tie_break: smallest_seed
+  baseline_seed_policy: same_seed_as_selected_EvoGFM
+  report: single_seed_accuracy_without_standard_deviation
+  interpretation: Exploratory selection on observed test results; not a multi-seed
+    mean or an independent test estimate.
+source_checkpoint: checkpoints/reference.pt
+source_training_seed: 42
+sources:
+  original: docs/results/node_classification.csv
+  structural: docs/results/airport_inputs.csv
+datasets:
+  air-brazil:
+    label: Air-Brazil
+    input: degree64
+    seeds:
+      1: 43
+      5: 42
+      20: 42
+  air-eu:
+    label: Air-EU
+    input: degree64
+    seeds:
+      1: 42
+      5: 44
+      20: 42
+  air-us:
+    label: Air-US
+    input: degree64
+    seeds:
+      1: 44
+      5: 44
+      20: 42
+  wikics:
+    label: WikiCS
+    input: original
+    seeds:
+      1: 42
+      5: 42
+      20: 43
+  blogcatalog:
+    label: BlogCatalog
+    input: original
+    seeds:
+      1: 42
+      5: 44
+      20: 42
+  deezer:
+    label: Deezer
+    input: original
+    seeds:
+      1: 44
+      5: 44
+      20: 42
+  lastfm-asia:
+    label: LastFM Asia
+    input: original
+    seeds:
+      1: 42
+      5: 44
+      20: 44
+  ogbn-arxiv:
+    label: OGBN-Arxiv
+    input: original
+    seeds:
+      1: 44
+      5: 43
+      20: 42
+  wiki:
+    label: Wiki
+    input: original
+    seeds:
+      1: 44
+      5: 44
+      20: 42
+  coauthor-physics:
+    label: Coauthor-Physics
+    input: original
+    seeds:
+      1: 42
+      5: 42
+      20: 42
