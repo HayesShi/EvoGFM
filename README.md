@@ -58,27 +58,26 @@ Add `--dry-run` to inspect the plan or `--device cuda` for NC evaluation on GPU.
 See the [reproduction guide](docs/reproduction.md) for datasets, seeds, protocols,
 checkpoint configuration, external baselines and timing rules.
 
-The [baseline results and airport diagnosis](docs/baseline_results.md) include
-seed-level CSV measurements, completed comparisons and remaining baseline work.
+The [fixed seed configuration](configs/current.yaml) records the selected NC,
+graph-classification, LP and continual-study seeds. These are exploratory
+selections on observed test results. The standard experiment commands above
+retain their multi-seed protocols.
 
-The **current selected-seed configuration** is [configs/current.yaml](configs/current.yaml).
-Its [result preview](docs/results/current_configuration.md) selects the best observed
-EvoGFM seed per dataset and shot from 42–44, with the same seed used by baselines.
-These are selected single-seed scores. Export them with
-`python scripts/export_current_results.py`; exports use the fixed configuration.
+Measurements, result tables and plotting inputs are generated locally and are
+excluded from Git. To export fixed-seed tables, provide the local CSV files named
+in the configuration and run `python scripts/export_current_results.py`.
 
 ## Figures
 
 ```bash
 python -m pip install -e ".[plots]"
-python scripts/plot_node_classification.py
-python scripts/plot_link_prediction.py
-python scripts/plot_retention.py
+python scripts/plot_node_classification.py --data runs/plot_inputs
+python scripts/plot_link_prediction.py --curves runs/plot_inputs/link_curves.npz
+python scripts/plot_retention.py --scores runs/plot_inputs/retention.csv --orders runs/plot_inputs/retention_orders.json
 ```
 
-The scripts read measured inputs in `figures/data/` and export PNG, PDF and editable
-SVG to `runs/figures/`. View the [three figure previews and data descriptions](figures/README.md).
-Tables remain editable Markdown/CSV.
+Supply plotting inputs from local experiment outputs. The scripts export PNG,
+PDF and editable SVG to `runs/figures/`. View the [three retained images](figures/README.md).
 
 ## Other entry points
 
@@ -109,7 +108,7 @@ evogfm/       Model, graph features, data loaders, readouts and continual update
 experiments/  Standard paper protocols and shared experiment settings
 scripts/      Figure rendering and prediction-to-curve export
 checkpoints/  Reference model and its source label partitions
-figures/      Small measured plotting inputs and PNG previews
+figures/      PNG figure previews
 tests/        Numerical and protocol regression tests
 docs/         Reproduction details
 ```

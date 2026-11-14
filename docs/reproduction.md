@@ -84,8 +84,9 @@ old development timing snapshots.
 The repository contains EvoGFM and its GraphAny preprocessing adapter. External
 models use their own official implementations and checkpoints; their source code,
 weights and datasets are not bundled here. Export identical support/test IDs
-before comparing methods. The archived plotting measurements cover GraphAny,
-GraphGlue, UniLP and GraphKeeper; see [figure inputs](../figures/README.md).
+before comparing methods. The retained [figure previews](../figures/README.md)
+include GraphAny, GraphGlue, UniLP and GraphKeeper comparisons; their measured
+inputs are kept locally.
 
 The UniLP checkpoint's development data includes Cora. Its Cora comparison is
 retained with that overlap. GraphKeeper historical plots retain native expert
@@ -147,9 +148,8 @@ source ego-graphs and 60 epochs. The command above evaluates all ten graphs;
 without `--graphs`, evaluation defaults to the three airport graphs.
 `--stream` materializes the support embeddings and predicts every original test
 node in blocks. The full graph, original feature width, official PPR and encoder
-remain unchanged. For the 27 airport episodes, all 6669 test predictions matched
-the original full-embedding implementation. Without streaming, full embeddings
-retain 32 times the original feature width and can require substantial memory.
+remain unchanged. Without streaming, full embeddings retain 32 times the original
+feature width and can require substantial memory.
 A ten-graph mean is reported only after all ten graphs have all three seeds.
 
 For the matched structural-input diagnostic, reuse that source checkpoint in
@@ -165,13 +165,20 @@ Repeat with `--input-policy degree_quantile64` and another output directory.
 
 ```bash
 python -m pip install -e ".[plots]"
-python scripts/plot_node_classification.py
-python scripts/plot_link_prediction.py
-python scripts/plot_retention.py
+python scripts/plot_node_classification.py --data runs/plot_inputs
+python scripts/plot_link_prediction.py --curves runs/plot_inputs/link_curves.npz
+python scripts/plot_retention.py --scores runs/plot_inputs/retention.csv --orders runs/plot_inputs/retention_orders.json
 ```
 
-These read the small measured inputs in `figures/data/` and write editable SVG,
-PDF and 300-DPI PNG to `runs/figures/`. Tables remain Markdown/CSV.
+Provide measured inputs from your local experiments. CSV/JSON/NPZ inputs and
+generated tables are excluded from Git; the image previews are retained.
+The renderers write editable SVG, PDF and 300-DPI PNG to `runs/figures/`.
+
+The NC renderer expects `nc_graphany.csv` and `nc_graphglue.csv` in its `--data`
+directory, with per-graph, per-shot three-seed comparison summaries. The retention
+renderer reads trajectory rows from `--scores` and the four historical graph
+names per seed from `--orders`. The LP renderer reads the curve archive generated
+by the exporter below.
 
 To plot a new complete LP run, export its prediction files first:
 
@@ -183,3 +190,23 @@ python scripts/plot_link_prediction.py --curves runs/new_curves.npz
 An optional `--unilp DIRECTORY` accepts matching baseline files with `scores`,
 `query_pairs` and `positive_count` fields. All query IDs must agree. The exporter
 also accepts `--source DIRECTORY` for the original baseline-artifact layout.
+
+## Local result tables
+
+Summarize your own seed-level NC CSV, retaining editable output:
+
+```bash
+python scripts/summarize_node_results.py --input runs/node_scores.csv --output runs/summary
+```
+
+The input columns are `method`, `graph`, `seed`, `shots` and `accuracy_percent`.
+An optional `--reported-values FILE` applies explicit table-value overrides from
+a local CSV. Result tables and override files are not bundled in the repository.
+
+The selected-seed exporter reads the local files listed under `sources` in
+`configs/current.yaml`. To use an external local result directory with the same
+relative layout:
+
+```bash
+python scripts/export_current_results.py --results-root LOCAL_RESULT_ROOT --output runs/current_configuration
+```

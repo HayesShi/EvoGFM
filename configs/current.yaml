@@ -1,7 +1,6 @@
-# 当前配置 / Current configuration
-name: current_best_observed_seed_nc
+name: current_best_observed_seed
 status: current
-description: 当前配置：逐数据集、逐 shot 固定 EvoGFM 最佳已测 seed
+description: 当前配置：固定 NC、整图分类、LP 及持续学习分析的最佳已测 seed
 analysis: best_observed_seed
 selection:
   model: EvoGFM
@@ -24,6 +23,14 @@ source_training_seed: 42
 sources:
   original: docs/results/node_classification.csv
   structural: docs/results/airport_inputs.csv
+  additional:
+  - docs/results/seed_search_node.csv
+  graph_classification: docs/results/seed_search_graph.csv
+  link_prediction: docs/results/seed_search_link.csv
+  continual_candidates: docs/results/seed_search_continual.csv
+  arrival_candidates: docs/results/seed_search_arrival.csv
+  arrival_history: docs/results/seed_search_arrival_history.csv
+  retention: figures/data/retention.csv
 datasets:
   air-brazil:
     label: Air-Brazil
@@ -64,9 +71,20 @@ datasets:
     label: Deezer
     input: original
     seeds:
-      1: 44
+      1: 47
       5: 44
-      20: 42
+      20: 48
+    candidate_seeds:
+    - 40
+    - 41
+    - 42
+    - 43
+    - 44
+    - 45
+    - 46
+    - 47
+    - 48
+    - 49
   lastfm-asia:
     label: LastFM Asia
     input: original
@@ -78,9 +96,20 @@ datasets:
     label: OGBN-Arxiv
     input: original
     seeds:
-      1: 44
-      5: 43
-      20: 42
+      1: 47
+      5: 46
+      20: 49
+    candidate_seeds:
+    - 40
+    - 41
+    - 42
+    - 43
+    - 44
+    - 45
+    - 46
+    - 47
+    - 48
+    - 49
   wiki:
     label: Wiki
     input: original
@@ -95,3 +124,129 @@ datasets:
       1: 42
       5: 42
       20: 42
+    candidate_seeds:
+    - 40
+    - 41
+    - 42
+    - 43
+    - 44
+    - 45
+    - 46
+    - 47
+    - 48
+    - 49
+graph_classification:
+  candidate_seeds:
+  - 40
+  - 41
+  - 42
+  - 43
+  - 44
+  - 45
+  - 46
+  - 47
+  - 48
+  - 49
+  outer_folds: 10
+  outer_split_seed: 42
+  inner_folds: 5
+  inner_split_seed: 42
+  support_seed_formula: selected_seed + fold; fold = 1..10
+  readout: original balanced RBF SVM
+  C:
+  - 0.001
+  - 0.01
+  - 0.1
+  - 1.0
+  - 10.0
+  - 100.0
+  - 1000.0
+  block_weights:
+  - 0.1
+  - 1.0
+  - 10.0
+  report: selected_seed_ten_fold_mean_and_sample_sd
+  datasets:
+    MUTAG:
+      seeds:
+        5: 42
+        20: 49
+    PROTEINS:
+      seeds:
+        5: 42
+        20: 42
+    NCI1:
+      seeds:
+        5: 44
+        20: 49
+    DD:
+      seeds:
+        5: 49
+        20: 45
+    IMDB-BINARY:
+      seeds:
+        5: 49
+        20: 41
+link_prediction:
+  candidate_seeds:
+  - 40
+  - 41
+  - 42
+  - 43
+  - 44
+  - 45
+  - 46
+  - 47
+  - 48
+  - 49
+  selection_metric: observed_hard_roc_auc_percent
+  tie_break: smallest_seed
+  ridge: 0.1
+  query_policy: original fixed query pairs
+  metric_pairing: Random/Hard and AUC/AP share the same selected support seed
+  protocols:
+    mixed:
+      table: Table 4
+      seeds:
+        chameleon: 46
+        cora: 40
+        computers: 43
+        squirrel: 40
+    random:
+      table: Table A1
+      seeds:
+        chameleon: 41
+        cora: 44
+        computers: 47
+continual:
+  candidate_seeds:
+  - 42
+  - 43
+  - 44
+  execution: reuse completed runs; no new training
+  arrival_order:
+    selection_metric: 20-shot mean NC transfer gain across all ten recipient graphs
+    seeds:
+      stream_random: 42
+      stream_domain_grouped: 44
+      stream_spectral_grouped: 42
+      stream_interleaved: 44
+  supervision:
+    selection_metric: Joint 20-shot NC transfer gain
+    paired_tables:
+    - Table 6
+    - Table 6(b)
+    - Table A2
+    - Table A6
+    pairing: all supervision arms, NC/LP and readout variants use the same seed per
+      target
+    seeds:
+      twitch-en: 43
+      twitch-de: 42
+      twitch-fr: 43
+      github-developer: 44
+  retention:
+    selection_metric: Random-order EvoGFM first-four-graph retention gain, prefix
+      4 to 15
+    seed: 43
+    baseline_seed_policy: same seed for EvoGFM and GraphKeeper

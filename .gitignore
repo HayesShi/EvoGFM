@@ -23,7 +23,10 @@ Thumbs.db
 /results*.json
 /best_results.json
 
-# Small, versioned reproduction inputs.
+# Keep measured results and plotting inputs local.
+/docs/results/
+/docs/baseline_results.md
+/figures/data/
+
+# Reference model used by the experiment scripts.
 !/checkpoints/reference.pt
-!/figures/data/
-!/figures/data/*

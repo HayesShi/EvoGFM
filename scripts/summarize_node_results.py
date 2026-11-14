@@ -128,14 +128,11 @@ def summarize(frame):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--input", type=Path, default=Path("docs/results/node_classification.csv")
-    )
+    parser.add_argument("--input", type=Path, required=True)
     parser.add_argument("--output", type=Path, default=Path("runs/summary"))
     parser.add_argument(
         "--reported-values",
         type=Path,
-        default=Path("docs/results/value_audit.csv"),
         help="Author-confirmed table values; seed-level CSV and statistics remain unchanged.",
     )
     args = parser.parse_args()
@@ -144,16 +141,19 @@ def main():
     per_graph.to_csv(args.output / "per_graph.csv", index=False)
     overall.to_csv(args.output / "overall.csv", index=False)
     reported = {}
-    for row in pd.read_csv(args.reported_values).to_dict("records"):
-        if row["table"] == "Table 1" or row["table"].startswith("Table 2 "):
-            graph = "overall" if row["table"] == "Table 1" else row["dataset"].lower()
-            reported[(row["method"].lower(), graph, int(row["shots"]))] = row[
-                "reported"
-            ]
+    if args.reported_values:
+        for row in pd.read_csv(args.reported_values).to_dict("records"):
+            if row["table"] == "Table 1" or row["table"].startswith("Table 2 "):
+                graph = (
+                    "overall" if row["table"] == "Table 1" else row["dataset"].lower()
+                )
+                reported[(row["method"].lower(), graph, int(row["shots"]))] = row[
+                    "reported"
+                ]
     (args.output / "node_classification.md").write_text(
         markdown_tables(per_graph, overall, reported), encoding="utf-8"
     )
-    print(f"Wrote tables with author-confirmed values from {args.reported_values}")
+    print(f"Wrote tables to {args.output}")
 
 
 if __name__ == "__main__":
