@@ -1,5 +1,6 @@
 data/
 runs/
+/baselines/
 *.pt
 *.pth
 *.pkl
@@ -28,5 +29,6 @@ Thumbs.db
 /docs/baseline_results.md
 /figures/data/
 
-# Reference model used by the experiment scripts.
-!/checkpoints/reference.pt
+# Keep model weights and benchmark outputs local.
+/figures/
+*.joblib

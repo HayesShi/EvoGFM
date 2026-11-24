@@ -96,7 +96,7 @@ class LinkScorer:
                 np.asarray(common.sum(1)).ravel(),
                 np.asarray(common @ self.inv_degree).ravel(),
                 np.asarray(common @ self.inv_log_degree).ravel(),
-                three_hop_entries(self.a, ip, jp, left, right),
+                self._three_hop_entries(ip, jp, left, right),
             ]
             shared = np.asarray(
                 self.weighted[ip].multiply(self.weighted[jp]).sum(1)
@@ -140,6 +140,9 @@ class LinkScorer:
         if self.ablation == "propagation":
             extra = torch.zeros_like(extra)
         return torch.cat((base, extra), dim=1)
+
+    def _three_hop_entries(self, left_ids, right_ids, left, right):
+        return three_hop_entries(self.a, left_ids, right_ids, left, right)
 
     @torch.no_grad()
     def score(self, pairs, fitted, batch_size=512, group_queries=True):

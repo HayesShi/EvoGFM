@@ -1,5 +1,7 @@
 # EvoGFM
 
+The `VLDB` branch contains the incremental predictive-serving implementation. See the [VLDB setup and method guide](docs/vldb.md) for replay commands and the numerical contract.
+
 Graph-conditioned inverse attention for node classification, link prediction and
 graph classification, with continual calibration across graph domains.
 
@@ -43,7 +45,7 @@ Use `--help` for individual options.
 ## Paper experiments
 
 The original epoch-21 reference checkpoint and its source label partitions are
-included under `checkpoints/`. Standard experiment entry points use this checkpoint.
+available from the upstream release. See the [VLDB setup guide](docs/vldb.md) to fetch it locally.
 
 ```bash
 python -m experiments.run nc          # Few-shot NC, arrival orders and retention
@@ -77,7 +79,7 @@ python scripts/plot_retention.py --scores runs/plot_inputs/retention.csv --order
 ```
 
 Supply plotting inputs from local experiment outputs. The scripts export PNG,
-PDF and editable SVG to `runs/figures/`. View the [three retained images](figures/README.md).
+PDF and editable SVG to `runs/figures/`.
 
 ## Other entry points
 
